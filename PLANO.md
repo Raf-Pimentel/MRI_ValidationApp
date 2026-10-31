@@ -39,7 +39,7 @@ Logo, as 5 colunas de uma página mostram **o mesmo paciente e a mesma sequênci
 | Escala | ≥ 20 médicos, 50 páginas avaliadas por médico |
 | Fluxo | Salvar progresso e retomar, voltar e alterar notas |
 | Acesso | Link pessoal com token, sem senha. A primeira entrada gera e fixa a ordem sorteada daquele médico |
-| Ética das imagens | Datasets públicos e abertos, sem restrição ética para exibir. Citar e respeitar a licença de cada um |
+| Ética das imagens | Datasets públicos e abertos, sem restrição ética para exibir. Licenças e citações fora do MVP local (decisão 0003); rever antes de divulgar |
 | Hospedagem | Primeiro rodar **100% local**. Depois, servidor do LIDS e compartilhamento com os médicos. Se for difícil, servidor externo |
 
 ### 2.1 Escopo do MVP
@@ -86,16 +86,15 @@ Para não complicar cedo, o MVP é o menor conjunto que já coleta dados válido
 
 Já resolvidas: dimensões e formato dos volumes (conferidos nos 40 arquivos do testkit), lista de sequências e modelos, mesmo caso nas colunas, o médico não sabe qual é o original, significado da nota, ranking adiado, gabarito fora do servidor.
 
+Decididas em 2026-10-31 (ver `docs/decisions/0003-decisoes-do-orientador.md`): texto e âncoras da escala 1–5 aprovados como estão (pergunta abaixo); o mesmo paciente pode aparecer ao mesmo médico em sequências diferentes; sem licenças nas instruções, por ser um MVP informal e só local (rever antes de divulgar); sem TCLE.
+
+Pergunta e âncoras: "Quão real parece esta imagem de ressonância? Considere anatomia, textura e contraste. Avalie o aspecto de imagem real, independentemente de haver ou não doença." 1 = claramente artificial; 2 = provavelmente artificial; 3 = incerta; 4 = provavelmente real; 5 = indistinguível de uma ressonância real.
+
 Abertas:
 
-1. **Texto e âncoras da escala 1–5.** Proposta para aprovar:
-   - Pergunta: "Quão real parece esta imagem de ressonância? Considere anatomia, textura e contraste. Avalie o aspecto de imagem real, independentemente de haver ou não doença."
-   - 1 = claramente artificial; 2 = provavelmente artificial; 3 = incerta; 4 = provavelmente real; 5 = indistinguível de uma ressonância real.
-2. **Desenho amostral.** Quantos casos no total além dos 8 do testkit? Cada médico vê 50 deles? O mesmo paciente pode aparecer ao mesmo médico em sequências diferentes (risco de aprendizado entre páginas)? Quantos médicos por caso, no mínimo? Define o algoritmo de sorteio.
-3. **Quem gera o lote real e em que formato.** Os casos reais devem seguir o formato do testkit (5 volumes por caso, `info.txt` com dataset e sequência, gabarito à parte). Quem roda a montagem e quando?
-4. **Licenças e citações** de BraTS-GLI, BraTS-MET e IXI. Público não significa sem termos de uso. Registrar na tela de instruções ou no rodapé o que cada licença pedir.
-5. **TCLE dos avaliadores** (baixa prioridade). Confirmar com o orientador se precisa de termo, já que registramos o estado do viewer.
-6. **Hospedagem no LIDS.** Perguntar quando chegar a hora: Docker é permitido? Acesso externo, HTTPS ou VPN? Quanto disco?
+1. **Desenho amostral.** Quantos casos no total além dos 8 do testkit? Quantos cada médico vê (a ideia inicial era 50)? Quantos médicos por caso, no mínimo? Define o algoritmo de sorteio.
+2. **Quem gera o lote real e em que formato.** Os casos reais devem seguir o formato do testkit (5 volumes por caso, `info.txt` com dataset e sequência, gabarito à parte). Quem roda a montagem e quando?
+3. **Hospedagem.** Fica para o próximo passo. Quando chegar a hora: Docker é permitido? Acesso externo, HTTPS ou VPN? Quanto disco e banda? Quem faz o backup?
 
 ## 5. Arquitetura proposta
 
