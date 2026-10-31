@@ -71,9 +71,11 @@ button.primary:hover:not(:disabled) { background: var(--accent-hover); }
 .col { display: flex; flex-direction: column; min-height: 0; }
 .col h2 { margin: 0 0 4px; font-size: 13px; font-weight: 600; letter-spacing: .02em; text-align: center; color: var(--muted-2); }
 .cv { position: relative; flex: 1; min-height: 0; }
-.col canvas { outline: none; width: 100%; height: 100%; display: block; }
-.lupa { position: absolute; width: 26px; height: 26px; padding: 0; font-size: 13px; opacity: .75; }
-.lupa:hover { opacity: 1; }
+/* Hairline outside the canvas (no layout change) so each black image area reads as one frame. Same for all five columns. */
+.col canvas { outline: none; width: 100%; height: 100%; display: block; box-shadow: 0 0 0 1px var(--line); }
+/* The magnifier sits on the image: grey icon on a dark chip, so no colour lands on the picture. */
+.lupa { position: absolute; width: 26px; height: 26px; padding: 0; font-size: 13px; opacity: .75; background: rgba(17, 17, 17, .7); border-color: var(--border); filter: grayscale(1); }
+.lupa:hover:not(:disabled) { opacity: 1; background: rgba(51, 51, 51, .9); }
 .strip { flex: none; height: 74px; box-sizing: border-box; padding-top: 6px; display: flex; flex-direction: column; gap: 4px; }
 .scores { display: flex; gap: 3px; }
 .scores button { flex: 1; height: 30px; padding: 0; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }

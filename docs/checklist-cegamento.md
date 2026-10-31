@@ -34,3 +34,14 @@ Conferido por: Rafael (nomes opacos na aba Network e busca por nomes de modelo e
 Confirmado depois, com *Disable cache* ligado: tamanhos iguais (`content-length` 6211744 no volume inspecionado), cabeçalhos sem origem, buscas em Sources com zero resultados e nenhuma dica ao passar o mouse (colunas, botões, lupa).
 
 Nota: na primeira conferência do Rafael a coluna *Size* mostrou `(disk cache)`; os tamanhos iguais foram medidos pelo script (item 2) e o total carregado (62.205.695 B para 10 volumes) é coerente.
+
+## Repetição após a repaginada visual (P12.5, 2026-10-31)
+
+Feita por script no navegador (servidor de desenvolvimento, médico de teste, página 1) e por varredura do build de produção. A conferência humana (F12, Elements/Sources/tooltips) **não** foi repetida: fica para quando houver o endereço final (P10).
+
+- Rede: URLs dos volumes são `/api/vol/<uuid>`; as outras chamadas são `/api/session/<token>` e `/api/session/<token>/page/<n>`.
+- Os 5 volumes da página 1 têm exatamente o mesmo tamanho (6.551.776 bytes, lidos com `cache: no-store`).
+- Cabeçalhos dos volumes: `accept-ranges`, `cache-control`, `connection`, `content-length`, `content-type`, `date`, `etag`, `last-modified`, `server`, `vary`; nenhum cita origem.
+- DOM: nenhuma ocorrência de `resblock`, `mednext`, `segresnet`, `swin`, `ground truth`, `answer`, `source`, `truth`. A palavra "real" aparece 4 vezes, todas no texto das instruções. Nenhum atributo `title` (sem tooltips).
+- Build (`frontend/dist`): 0 ocorrências de `resblock`, `mednext`, `segresnet`, `swin`, `ground truth`, `answer_key`.
+- `localStorage` vazio; `sessionStorage` sem chaves do app.
