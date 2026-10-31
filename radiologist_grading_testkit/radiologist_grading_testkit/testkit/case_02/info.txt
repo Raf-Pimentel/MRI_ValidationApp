@@ -1,0 +1,5 @@
+Dataset: BraTS-GLI
+Modality: T2
+5 volumes (vol_A..vol_E): one real MRI + 4 autoencoder reconstructions,
+in randomized, unlabeled order. Rank vol_A..vol_E from most to least
+realistic-looking.
