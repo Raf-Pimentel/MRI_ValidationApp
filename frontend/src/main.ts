@@ -15,9 +15,16 @@ const pos = [0.5, 0.5, 0.5]
 const view = { brightness: 0, contrast: 100 }
 const instances: Niivue[] = []
 let dimsRAS: number[] = [0, 1, 1, 1]
+// Enlarged viewer (magnifier): one extra Niivue showing a single view of one column.
+let zoomNv: Niivue | null = null
+const zoom = { view: 0, slot: 'A', level: 1 }
+const zoomPan = [0, 0, 0]
+const lupaSets: { canvas: HTMLCanvasElement; lupas: HTMLButtonElement[] }[] = []
+
+const allViewers = () => (zoomNv ? [...instances, zoomNv] : instances)
 
 function render() {
-  for (const nv of instances) {
+  for (const nv of allViewers()) {
     nv.scene.crosshairPos[0] = pos[0]
     nv.scene.crosshairPos[1] = pos[1]
     nv.scene.crosshairPos[2] = pos[2]
@@ -35,7 +42,7 @@ function applyWindow() {
   const bright = view.brightness / 100
   const width = 1 / (view.contrast / 100)
   const center = 0.5 - bright
-  for (const nv of instances) {
+  for (const nv of allViewers()) {
     const vol = nv.volumes[0]
     vol.cal_min = center - width / 2
     vol.cal_max = center + width / 2
@@ -65,9 +72,20 @@ function tileUnderMouse(nv: Niivue, canvas: HTMLCanvasElement, e: MouseEvent): n
 async function createColumn(slot: string): Promise<Niivue> {
   const col = document.createElement('div')
   col.className = 'col'
-  col.innerHTML = `<h2>Imagem ${slot}</h2><canvas></canvas>`
+  col.innerHTML = `<h2>Imagem ${slot}</h2><div class="cv"><canvas></canvas></div>`
   cols.appendChild(col)
   const canvas = col.querySelector('canvas') as HTMLCanvasElement
+  const cv = col.querySelector('.cv') as HTMLDivElement
+  const lupas = VIEW_NAMES.map((name, v) => {
+    const b = document.createElement('button')
+    b.className = 'lupa'
+    b.innerHTML = '&#128269;'
+    b.setAttribute('aria-label', `Ampliar ${name} da imagem ${slot}`)
+    b.addEventListener('click', () => openZoom(v, slot))
+    cv.appendChild(b)
+    return b
+  })
+  lupaSets.push({ canvas, lupas })
 
   const nv = new Niivue({
     isColorbar: false,
@@ -101,16 +119,140 @@ async function createColumn(slot: string): Promise<Niivue> {
     { capture: true, passive: false },
   )
 
-  // No click, drag, touch or key may move Niivue's own crosshair: that would desync this column.
+  blockPointer(canvas)
+  return nv
+}
+
+// No click, drag, touch or key may move Niivue's own crosshair: that would desync this column.
+function blockPointer(canvas: HTMLCanvasElement, keepPointer = false) {
   const BLOCKED = [
     'click', 'dblclick', 'mousedown', 'mouseup', 'mousemove', 'contextmenu',
-    'pointerdown', 'pointerup', 'pointermove', 'touchstart', 'touchmove', 'touchend',
-    'keydown', 'keyup',
+    'touchstart', 'touchmove', 'touchend', 'keydown', 'keyup',
   ]
+  // The enlarged viewer reads pointer events itself to pan, so it keeps them.
+  if (!keepPointer) BLOCKED.push('pointerdown', 'pointerup', 'pointermove')
   for (const type of BLOCKED) {
     canvas.addEventListener(type, (e) => e.stopImmediatePropagation(), { capture: true })
   }
-  return nv
+}
+
+function placeLupas() {
+  for (const { canvas, lupas } of lupaSets) {
+    const k = canvas.clientHeight / canvas.height
+    instances[0].screenSlices.forEach((s) => {
+      const [l, t, w, h] = s.leftTopWidthHeight
+      const b = lupas[s.axCorSag as number]
+      if (!b || h <= 0) return
+      b.style.top = `${t * k + 4}px`
+      b.style.left = `${(l + w) * k - 30}px`
+    })
+  }
+}
+
+// ---- Enlarged viewer ----
+
+const zoomBox = document.getElementById('zoom') as HTMLDivElement
+const zoomCanvas = document.getElementById('zoomcv') as HTMLCanvasElement
+const zoomTitle = document.getElementById('ztitle') as HTMLSpanElement
+const zoomSlider = document.getElementById('zl') as HTMLInputElement
+const zoomOut = document.getElementById('zlv') as HTMLOutputElement
+const zoomPicks = document.getElementById('zpick') as HTMLSpanElement
+
+function applyZoom() {
+  if (!zoomNv) return
+  // Niivue zooms about the world origin; (1 - zoom) * centre keeps the volume centre in place. zoomPan is the drag offset.
+  const c = zoomNv.frac2mm([0.5, 0.5, 0.5])
+  const k = 1 - zoom.level
+  zoomNv.setPan2Dxyzmm([zoomPan[0] + k * c[0], zoomPan[1] + k * c[1], zoomPan[2] + k * c[2], zoom.level])
+  zoomOut.textContent = `${Math.round(zoom.level * 100)}%`
+}
+
+async function loadZoomSlot(slot: string) {
+  if (!zoomNv) return
+  zoom.slot = slot
+  await zoomNv.loadVolumes([{ url: `/dev-data/${CASE}/${CASE}_vol_${slot}.nii.gz`, colormap: 'gray' }])
+  zoomNv.setSliceType(zoom.view)
+  zoomTitle.textContent = `Imagem ${slot} - ${VIEW_NAMES[zoom.view]}`
+  zoomPicks.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.slot === slot))
+  applyWindow()
+  applyZoom()
+}
+
+async function openZoom(viewIndex: number, slot: string) {
+  zoom.view = viewIndex
+  zoom.level = 1
+  zoomPan[0] = zoomPan[1] = zoomPan[2] = 0
+  zoomSlider.value = '1'
+  zoomBox.hidden = false
+  if (!zoomNv) {
+    zoomNv = new Niivue({
+      isColorbar: false,
+      isRuler: false,
+      isOrientCube: false,
+      show3Dcrosshair: false,
+      crosshairWidth: 0,
+      backColor: [0, 0, 0, 1],
+      mouseEventConfig: {
+        leftButton: { primary: DRAG_MODE.none },
+        rightButton: DRAG_MODE.none,
+        centerButton: DRAG_MODE.none,
+      },
+      touchEventConfig: { singleTouch: DRAG_MODE.none, doubleTouch: DRAG_MODE.none },
+    })
+    await zoomNv.attachToCanvas(zoomCanvas)
+    zoomCanvas.addEventListener(
+      'wheel',
+      (e) => {
+        e.preventDefault()
+        e.stopImmediatePropagation()
+        scrollView(zoom.view, e.deltaY > 0 ? 1 : -1)
+      },
+      { capture: true, passive: false },
+    )
+    blockPointer(zoomCanvas, true)
+    ;(window as unknown as { __zoomNv: Niivue }).__zoomNv = zoomNv
+  }
+  await loadZoomSlot(slot)
+  render()
+}
+
+function closeZoom() {
+  zoomBox.hidden = true
+}
+
+function bindZoom() {
+  zoomPicks.innerHTML = SLOTS.map((s) => `<button data-slot="${s}">${s}</button>`).join('')
+  zoomPicks.querySelectorAll('button').forEach((b) =>
+    b.addEventListener('click', () => loadZoomSlot((b as HTMLButtonElement).dataset.slot!)),
+  )
+  zoomSlider.addEventListener('input', () => {
+    zoom.level = Number(zoomSlider.value)
+    if (zoom.level === 1) zoomPan[0] = zoomPan[1] = zoomPan[2] = 0
+    applyZoom()
+  })
+  document.getElementById('zclose')!.addEventListener('click', closeZoom)
+  window.addEventListener('keydown', (e) => {
+    if (zoomBox.hidden) return
+    if (e.key === 'Escape') closeZoom()
+    const i = 'abcde'.indexOf(e.key.toLowerCase())
+    if (e.key.length === 1 && i >= 0) loadZoomSlot(SLOTS[i])
+  })
+  // Dragging pans the enlarged image (Niivue's own drag is disabled, so we do it by hand).
+  let drag: { x: number; y: number } | null = null
+  zoomCanvas.addEventListener('pointerdown', (e) => {
+    drag = { x: e.clientX, y: e.clientY }
+    zoomCanvas.setPointerCapture(e.pointerId)
+  })
+  zoomCanvas.addEventListener('pointermove', (e) => {
+    if (!drag) return
+    // Pan units are mm of the unzoomed view: fovMM shrinks with the zoom level, so scale it back up.
+    const k = (zoomNv!.screenSlices[0].fovMM[0] * zoom.level) / zoomCanvas.clientWidth
+    zoomPan[0] += (e.clientX - drag.x) * k
+    zoomPan[1] -= (e.clientY - drag.y) * k
+    drag = { x: e.clientX, y: e.clientY }
+    applyZoom()
+  })
+  zoomCanvas.addEventListener('pointerup', () => (drag = null))
 }
 
 function buildGutter() {
@@ -137,8 +279,14 @@ function buildGutter() {
       if (h > 0 && groups[s.axCorSag]) groups[s.axCorSag].style.top = `${(t + h / 2) * k}px`
     })
   }
-  new ResizeObserver(() => requestAnimationFrame(place)).observe(gutter)
+  new ResizeObserver(() =>
+    requestAnimationFrame(() => {
+      place()
+      placeLupas()
+    }),
+  ).observe(gutter)
   place()
+  placeLupas()
 }
 
 function holdToRepeat(btn: HTMLButtonElement, action: () => void) {
@@ -184,6 +332,10 @@ async function main() {
   dimsRAS = instances[0].volumes[0].dimsRAS ?? instances[0].volumes[0].dims ?? dimsRAS
   buildGutter()
   bindToolbar()
+  bindZoom()
+  // The enlarged viewer starts below the toolbar so brightness/contrast stay usable.
+  const tb = document.getElementById('tb') as HTMLDivElement
+  document.documentElement.style.setProperty('--tbh', `${tb.getBoundingClientRect().bottom}px`)
   applyWindow()
   ;(window as unknown as { __view: typeof view }).__view = view
 }

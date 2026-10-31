@@ -17,7 +17,16 @@
       #cols { flex: 1; min-height: 0; display: grid; grid-template-columns: 44px repeat(5, minmax(0, 1fr)); gap: 6px; padding: 0 6px 6px; }
       .col { display: flex; flex-direction: column; min-height: 0; }
       .col h2 { margin: 0 0 4px; font-size: 13px; font-weight: 500; text-align: center; }
-      .col canvas { outline: none; flex: 1; min-height: 0; width: 100%; display: block; }
+      .cv { position: relative; flex: 1; min-height: 0; }
+      .col canvas { outline: none; width: 100%; height: 100%; display: block; }
+      .lupa { position: absolute; width: 26px; height: 26px; padding: 0; font-size: 13px; opacity: .75; }
+      .lupa:hover { opacity: 1; }
+      #zoom { position: fixed; left: 0; right: 0; bottom: 0; top: var(--tbh, 80px); background: #111; z-index: 10; display: flex; flex-direction: column; }
+      #zoom[hidden] { display: none; }
+      #zbar { display: flex; align-items: center; gap: 12px; padding: 6px 10px; font-size: 13px; }
+      #zpick button { width: 28px; height: 26px; margin-right: 3px; }
+      #zpick button.on { background: #456; border-color: #89a; }
+      #zoomcv { flex: 1; min-height: 0; width: 100%; outline: none; cursor: grab; }
       #gutter { position: relative; flex: 1; min-height: 0; }
       .rowctl { position: absolute; left: 0; right: 0; transform: translateY(-50%); display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11px; color: #aaa; }
       .rowctl button { width: 30px; height: 26px; padding: 0; font-size: 14px; }
@@ -33,6 +42,16 @@
         <span style="margin-left: auto; color: #888">Vale para todas as imagens</span>
       </div>
       <div id="cols"></div>
+      <div id="zoom" hidden>
+        <div id="zbar">
+          <span id="ztitle"></span>
+          <span id="zpick"></span>
+          <label>Zoom <input type="range" id="zl" min="1" max="6" step="0.05" value="1" /><output id="zlv">100%</output></label>
+          <span style="color:#888">Roda do mouse: cortes. Arrastar: mover. A a E: trocar imagem. Esc: fechar</span>
+          <button id="zclose" style="margin-left:auto;height:26px;padding:0 10px">Fechar</button>
+        </div>
+        <canvas id="zoomcv"></canvas>
+      </div>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
