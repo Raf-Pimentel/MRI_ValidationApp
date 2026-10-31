@@ -5,9 +5,9 @@ Legenda: `[ ]` a fazer, `[~]` em andamento, `[x]` feito. Cada tarefa tem critér
 ## Estado atual
 
 - Última atualização: 2026-10-31
-- Fase em curso: Fases 0, 1 e 2 concluídas (T0.1 a T2.7); próxima: T3.1
+- Fase em curso: Fases 0 a 3 concluídas (T0.1 a T3.6); próxima: T4.1
 - Pendências de decisão que bloqueiam: ver `PLANO.md`, seção 4 (escala 1–5, desenho amostral). Nenhuma bloqueia as Fases 0 a 2.
-- Anotações da última sessão: Fase 2 feita em `backend/` (39 testes, `python -m pytest backend`). Rotas sob `/api/session/{token}` (sessão, `page/{n}`, `rating`) e `/api/vol/{opaque_id}`; o token vai no caminho, não em header, para o front poder montar o link simples. A página não traz id do caso, só `position`; a nota é enviada com `position` + `slot` e o servidor descobre o caso. O JSON da página tem `sequence`, `columns[{slot,url}]` e `ratings` (nota vigente por slot, para retomar). Ordem de páginas e colunas sai de `random.Random` com semente em texto; é gravada em `assignment` na primeira entrada. `rating_event` tem gatilhos SQLite que barram UPDATE e DELETE. O carregador recusa caso cujos 5 arquivos tenham tamanhos diferentes. Ver `docs/decisions/0002-backend.md`. Pendente: o desenho amostral (PLANO seção 4, item 2) ainda não existe; por ora cada médico recebe `min(50, nº de casos)` páginas em ordem sorteada, sem repetir caso. Não rodei o servidor com uvicorn (só o cliente de teste, com os 8 casos reais: os 5 volumes saem com 6.212.782 bytes). Sem CORS: o front deve usar proxy do Vite (T3.1). Obs.: as 7 tarefas foram feitas numa sessão só, a pedido do Rafael.
+- Anotações da última sessão: Fase 3 feita em `frontend/` (`api.ts`, `viewer.ts`, `main.ts`, `index.html`). Link do médico: `/?t=<token>` (a tela de entrada também aceita o link colado). Vite faz proxy de `/api` para `localhost:8000`; o plugin `/dev-data` do spike saiu. Nota 1–5 salva na hora (cada clique ou comentário é um POST com `client_event_id`, em fila, com nova tentativa se cair a conexão); `viewer_state` = cortes (índice 1-based por vista) + brilho/contraste, conferido no banco. Brilho/contraste persistem entre páginas; cortes voltam ao meio. Próxima/Finalizar avisa colunas sem nota; a tela final diz quantas páginas ainda têm imagens sem nota e leva à primeira incompleta. Pré-carga: busca os 5 volumes da página seguinte (cache HTTP do navegador; conferido que a troca lê do cache). Texto das instruções usa a pergunta e as âncoras *propostas* do PLANO seção 4, item 1 (ainda não aprovadas). Pendente: licenças/atribuição dos datasets nas instruções (PLANO seção 4, item 4); desenho amostral (hoje 8 páginas, uma por caso); a lupa não mostra a nota da coluna (PLANO seção 6, item 4); testado no navegador só por JavaScript (o painel não gerou capturas de tela), então falta uma olhada visual de layout, principalmente a faixa de notas em telas pequenas. Ver `.claude/launch.json` para subir back e front.
 
 ## Fase 0 — Spike do viewer (usa o `case_01` do testkit)
 
@@ -43,12 +43,12 @@ Objetivo: transformar um lote no formato do testkit em arquivos servíveis, sem 
 
 ## Fase 3 — Front completo
 
-- [ ] **T3.1** Integrar o front do spike com a API (carregar página e volumes). CP: página real exibida com a ordem sorteada.
-- [ ] **T3.2** Nota 1–5 por coluna com autosave e comentário opcional. Reservar uma faixa fixa abaixo das imagens, com as notas alinhadas às colunas (as imagens ficam menores; a lupa dá o detalhe). CP: recarregar a página mantém as notas e a grade ainda cabe na tela.
-- [ ] **T3.3** Anterior/Próxima, progresso (n/50) e aviso de colunas sem nota. CP: não finaliza com nota faltando sem aviso.
-- [ ] **T3.4** Tela de entrada, instruções (em português) e tela final. CP: fluxo completo de ponta a ponta no navegador.
-- [ ] **T3.5** Registrar o `viewer_state` (cortes e brilho/contraste) em cada nota. CP: aparece na linha gravada.
-- [ ] **T3.6** Pré-carregar a próxima página. CP: troca de página sem espera visível no testkit local.
+- [x] **T3.1** Integrar o front do spike com a API (carregar página e volumes). CP: página real exibida com a ordem sorteada.
+- [x] **T3.2** Nota 1–5 por coluna com autosave e comentário opcional. Reservar uma faixa fixa abaixo das imagens, com as notas alinhadas às colunas (as imagens ficam menores; a lupa dá o detalhe). CP: recarregar a página mantém as notas e a grade ainda cabe na tela.
+- [x] **T3.3** Anterior/Próxima, progresso (n/50) e aviso de colunas sem nota. CP: não finaliza com nota faltando sem aviso.
+- [x] **T3.4** Tela de entrada, instruções (em português) e tela final. CP: fluxo completo de ponta a ponta no navegador.
+- [x] **T3.5** Registrar o `viewer_state` (cortes e brilho/contraste) em cada nota. CP: aparece na linha gravada.
+- [x] **T3.6** Pré-carregar a próxima página. CP: troca de página sem espera visível no testkit local.
 
 ## Fase 4 — Exportação
 

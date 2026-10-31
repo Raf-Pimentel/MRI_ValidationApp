@@ -23,7 +23,7 @@ Fonte da verdade do projeto: `PLANO.md` (decisões e requisitos) e `docs/ROADMAP
 - Instalar o front: `npm install` dentro de `frontend/`
 - Rodar o front: `npm run dev` dentro de `frontend/` (http://localhost:5173)
 - Checar tipos: `npx tsc --noEmit` dentro de `frontend/`
-- Volumes de desenvolvimento: copiar os 5 `.nii.gz` de um caso do testkit para `data/dev/case_XX/` (pasta ignorada pelo git)
+- O front precisa do back no ar (Vite faz proxy de `/api` para `localhost:8000`). Abrir `http://localhost:5173/?t=<token>`.
 - Preparar os dados (Fase 1): `pip install -r scripts/requirements.txt`, depois `python scripts/prepare_data.py radiologist_grading_testkit/radiologist_grading_testkit/testkit data/prepared --force`. Gera `data/prepared/volumes/<uuid>.nii` e `data/prepared/manifest.json`. Nunca lê o gabarito.
 - Testes dos scripts: `python -m pytest scripts` (na raiz do repositório).
 - Back (dentro de `backend/`): `pip install -r requirements.txt`; `python -m app.cli load-manifest` (carrega `data/prepared/manifest.json` em `data/app.db`); `python -m app.cli create-rater --name "Fulano"` (imprime o token); `python -m uvicorn app.main:app --factory --port 8000`. Variáveis opcionais: `MRI_DB_PATH`, `MRI_PREPARED_DIR`, `MRI_PAGES_PER_RATER`.

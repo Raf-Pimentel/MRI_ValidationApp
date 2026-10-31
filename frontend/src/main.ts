@@ -1,360 +1,325 @@
-import { DRAG_MODE, Niivue, MULTIPLANAR_TYPE, SHOW_RENDER, SLICE_TYPE } from '@niivue/niivue'
+import { ApiError, getPage, getSession, postRating, prefetchVolume } from './api'
+import type { PageData, SessionInfo } from './api'
+import { getViewerState, initViewer, showPage, strips } from './viewer'
 
-const SLOTS = ['A', 'B', 'C', 'D', 'E']
-const CASE = 'case_01'
-const VIEW_NAMES = ['Axial', 'Coronal', 'Sagital']
-// Niivue tile type (axial=0, coronal=1, sagittal=2) -> component of crosshairPos [x, y, z]
-const AXIS_OF_VIEW = [2, 1, 0]
+const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T
 
-const cols = document.getElementById('cols') as HTMLDivElement
-const msg = document.getElementById('msg') as HTMLDivElement
+const screens = ['s-token', 's-intro', 's-done', 'app']
+function show(id: string) {
+  for (const s of screens) $(s).hidden = s !== id
+}
 
-// Shared position, as fractions of the volume. One component per view: scrolling a view changes only its own.
-const pos = [0.5, 0.5, 0.5]
-// Global display window (same for every image). Data is already in [0, 1], so the default window is 0-1.
-const view = { brightness: 0, contrast: 100 }
-const instances: Niivue[] = []
-let dimsRAS: number[] = [0, 1, 1, 1]
-// Enlarged viewer (magnifier): one extra Niivue showing a single view of one column.
-let zoomNv: Niivue | null = null
-const zoom = { view: 0, slot: 'A', level: 1 }
-const zoomPan = [0, 0, 0]
-const lupaSets: { canvas: HTMLCanvasElement; lupas: HTMLButtonElement[] }[] = []
+let token = ''
+let session: SessionInfo
+let page: PageData | null = null
+let viewerReady = false
 
-const allViewers = () => (zoomNv ? [...instances, zoomNv] : instances)
+// Current rating of each slot on the page being shown (what the server holds, plus unsent edits).
+const local: Record<string, { score: number | null; comment: string }> = {}
 
-function render() {
-  for (const nv of allViewers()) {
-    nv.scene.crosshairPos[0] = pos[0]
-    nv.scene.crosshairPos[1] = pos[1]
-    nv.scene.crosshairPos[2] = pos[2]
-    nv.drawScene()
+// ---- Saving ----
+
+// Saves run one after another, so the server sees them in the order the rater made them.
+let chain: Promise<void> = Promise.resolve()
+let unsaved = 0
+
+const wait = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+function setStatus(slot: string, text: string, kind: '' | 'bad' | 'missing' = '') {
+  const el = document.querySelector<HTMLElement>(`[data-status="${slot}"]`)
+  if (!el) return
+  el.textContent = text
+  el.className = `status ${kind}`
+}
+
+function save(slot: string) {
+  const r = local[slot]
+  if (!page || r.score === null) return
+  const body = {
+    client_event_id: crypto.randomUUID(),
+    position: page.position,
+    slot,
+    score: r.score,
+    comment: r.comment.trim() === '' ? null : r.comment,
+    viewer_state: getViewerState(),
   }
-  const parts = VIEW_NAMES.map((name, v) => {
-    const axis = AXIS_OF_VIEW[v]
-    const n = dimsRAS[axis + 1]
-    return `${name} ${Math.min(n, Math.floor(pos[axis] * n) + 1)}/${n}`
-  })
-  msg.textContent = `${instances.length} volumes | ${parts.join(' | ')}`
-}
-
-function applyWindow() {
-  const bright = view.brightness / 100
-  const width = 1 / (view.contrast / 100)
-  const center = 0.5 - bright
-  for (const nv of allViewers()) {
-    const vol = nv.volumes[0]
-    vol.cal_min = center - width / 2
-    vol.cal_max = center + width / 2
-    nv.updateGLVolume()
-  }
-  render()
-}
-
-function scrollView(viewIndex: number, steps: number) {
-  const axis = AXIS_OF_VIEW[viewIndex]
-  const n = dimsRAS[axis + 1]
-  pos[axis] = Math.min(1, Math.max(0, pos[axis] + steps / n))
-  render()
-}
-
-function tileUnderMouse(nv: Niivue, canvas: HTMLCanvasElement, e: MouseEvent): number | null {
-  const rect = canvas.getBoundingClientRect()
-  const x = ((e.clientX - rect.left) * canvas.width) / rect.width
-  const y = ((e.clientY - rect.top) * canvas.height) / rect.height
-  for (const s of nv.screenSlices) {
-    const [l, t, w, h] = s.leftTopWidthHeight
-    if (w > 0 && x >= l && x <= l + w && y >= t && y <= t + h) return s.axCorSag as number
-  }
-  return null
-}
-
-async function createColumn(slot: string): Promise<Niivue> {
-  const col = document.createElement('div')
-  col.className = 'col'
-  col.innerHTML = `<h2>Imagem ${slot}</h2><div class="cv"><canvas></canvas></div>`
-  cols.appendChild(col)
-  const canvas = col.querySelector('canvas') as HTMLCanvasElement
-  const cv = col.querySelector('.cv') as HTMLDivElement
-  const lupas = VIEW_NAMES.map((name, v) => {
-    const b = document.createElement('button')
-    b.className = 'lupa'
-    b.innerHTML = '&#128269;'
-    b.setAttribute('aria-label', `Ampliar ${name} da imagem ${slot}`)
-    b.addEventListener('click', () => openZoom(v, slot))
-    cv.appendChild(b)
-    return b
-  })
-  lupaSets.push({ canvas, lupas })
-
-  const nv = new Niivue({
-    isColorbar: false,
-    isRuler: false,
-    isOrientCube: false,
-    show3Dcrosshair: false,
-    crosshairWidth: 0,
-    multiplanarShowRender: SHOW_RENDER.NEVER,
-    multiplanarLayout: MULTIPLANAR_TYPE.COLUMN,
-    backColor: [0, 0, 0, 1],
-    mouseEventConfig: {
-      leftButton: { primary: DRAG_MODE.none },
-      rightButton: DRAG_MODE.none,
-      centerButton: DRAG_MODE.none,
-    },
-    touchEventConfig: { singleTouch: DRAG_MODE.none, doubleTouch: DRAG_MODE.none },
-  })
-  await nv.attachToCanvas(canvas)
-  await nv.loadVolumes([{ url: `/dev-data/${CASE}/${CASE}_vol_${slot}.nii.gz`, colormap: 'gray' }])
-  nv.setSliceType(SLICE_TYPE.MULTIPLANAR)
-
-  // Own wheel handler (capture phase) replaces Niivue's, which would move all views together.
-  canvas.addEventListener(
-    'wheel',
-    (e) => {
-      e.preventDefault()
-      e.stopImmediatePropagation()
-      const tile = tileUnderMouse(nv, canvas, e)
-      if (tile !== null) scrollView(tile, e.deltaY > 0 ? 1 : -1)
-    },
-    { capture: true, passive: false },
-  )
-
-  blockPointer(canvas)
-  keepSized(nv, canvas)
-  return nv
-}
-
-// Niivue only resizes on window 'resize'. Browser zoom and layout changes also change the canvas box, so watch it.
-let afterResize = () => {}
-function keepSized(nv: Niivue, canvas: HTMLCanvasElement) {
-  new ResizeObserver(() =>
-    requestAnimationFrame(() => {
-      nv.resizeListener()
-      afterResize()
-    }),
-  ).observe(canvas)
-}
-
-// No click, drag, touch or key may move Niivue's own crosshair: that would desync this column.
-function blockPointer(canvas: HTMLCanvasElement, keepPointer = false) {
-  const BLOCKED = [
-    'click', 'dblclick', 'mousedown', 'mouseup', 'mousemove', 'contextmenu',
-    'touchstart', 'touchmove', 'touchend', 'keydown', 'keyup',
-  ]
-  // The enlarged viewer reads pointer events itself to pan, so it keeps them.
-  if (!keepPointer) BLOCKED.push('pointerdown', 'pointerup', 'pointermove')
-  for (const type of BLOCKED) {
-    canvas.addEventListener(type, (e) => e.stopImmediatePropagation(), { capture: true })
-  }
-}
-
-function placeLupas() {
-  for (const { canvas, lupas } of lupaSets) {
-    const k = canvas.clientHeight / canvas.height
-    instances[0].screenSlices.forEach((s) => {
-      const [l, t, w, h] = s.leftTopWidthHeight
-      const b = lupas[s.axCorSag as number]
-      if (!b || h <= 0) return
-      b.style.top = `${t * k + 4}px`
-      b.style.left = `${(l + w) * k - 30}px`
-    })
-  }
-}
-
-// ---- Enlarged viewer ----
-
-const zoomBox = document.getElementById('zoom') as HTMLDivElement
-const zoomCanvas = document.getElementById('zoomcv') as HTMLCanvasElement
-const zoomTitle = document.getElementById('ztitle') as HTMLSpanElement
-const zoomSlider = document.getElementById('zl') as HTMLInputElement
-const zoomOut = document.getElementById('zlv') as HTMLOutputElement
-const zoomPicks = document.getElementById('zpick') as HTMLSpanElement
-
-function applyZoom() {
-  if (!zoomNv) return
-  // Niivue zooms about the world origin; (1 - zoom) * centre keeps the volume centre in place. zoomPan is the drag offset.
-  const c = zoomNv.frac2mm([0.5, 0.5, 0.5])
-  const k = 1 - zoom.level
-  zoomNv.setPan2Dxyzmm([zoomPan[0] + k * c[0], zoomPan[1] + k * c[1], zoomPan[2] + k * c[2], zoom.level])
-  zoomOut.textContent = `${Math.round(zoom.level * 100)}%`
-}
-
-async function loadZoomSlot(slot: string) {
-  if (!zoomNv) return
-  zoom.slot = slot
-  await zoomNv.loadVolumes([{ url: `/dev-data/${CASE}/${CASE}_vol_${slot}.nii.gz`, colormap: 'gray' }])
-  zoomNv.setSliceType(zoom.view)
-  zoomTitle.textContent = `Imagem ${slot} - ${VIEW_NAMES[zoom.view]}`
-  zoomPicks.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.slot === slot))
-  applyWindow()
-  applyZoom()
-}
-
-async function openZoom(viewIndex: number, slot: string) {
-  zoom.view = viewIndex
-  zoom.level = 1
-  zoomPan[0] = zoomPan[1] = zoomPan[2] = 0
-  zoomSlider.value = '1'
-  zoomBox.hidden = false
-  if (!zoomNv) {
-    zoomNv = new Niivue({
-      isColorbar: false,
-      isRuler: false,
-      isOrientCube: false,
-      show3Dcrosshair: false,
-      crosshairWidth: 0,
-      backColor: [0, 0, 0, 1],
-      mouseEventConfig: {
-        leftButton: { primary: DRAG_MODE.none },
-        rightButton: DRAG_MODE.none,
-        centerButton: DRAG_MODE.none,
-      },
-      touchEventConfig: { singleTouch: DRAG_MODE.none, doubleTouch: DRAG_MODE.none },
-    })
-    await zoomNv.attachToCanvas(zoomCanvas)
-    zoomCanvas.addEventListener(
-      'wheel',
-      (e) => {
-        e.preventDefault()
-        e.stopImmediatePropagation()
-        scrollView(zoom.view, e.deltaY > 0 ? 1 : -1)
-      },
-      { capture: true, passive: false },
-    )
-    blockPointer(zoomCanvas, true)
-    keepSized(zoomNv, zoomCanvas)
-    ;(window as unknown as { __zoomNv: Niivue }).__zoomNv = zoomNv
-  }
-  await loadZoomSlot(slot)
-  render()
-}
-
-function closeZoom() {
-  zoomBox.hidden = true
-}
-
-function bindZoom() {
-  zoomPicks.innerHTML = SLOTS.map((s) => `<button data-slot="${s}">${s}</button>`).join('')
-  zoomPicks.querySelectorAll('button').forEach((b) =>
-    b.addEventListener('click', () => loadZoomSlot((b as HTMLButtonElement).dataset.slot!)),
-  )
-  zoomSlider.addEventListener('input', () => {
-    zoom.level = Number(zoomSlider.value)
-    if (zoom.level === 1) zoomPan[0] = zoomPan[1] = zoomPan[2] = 0
-    applyZoom()
-  })
-  document.getElementById('zclose')!.addEventListener('click', closeZoom)
-  window.addEventListener('keydown', (e) => {
-    if (zoomBox.hidden) return
-    if (e.key === 'Escape') closeZoom()
-    const i = 'abcde'.indexOf(e.key.toLowerCase())
-    if (e.key.length === 1 && i >= 0) loadZoomSlot(SLOTS[i])
-  })
-  // Dragging pans the enlarged image (Niivue's own drag is disabled, so we do it by hand).
-  let drag: { x: number; y: number } | null = null
-  zoomCanvas.addEventListener('pointerdown', (e) => {
-    drag = { x: e.clientX, y: e.clientY }
-    zoomCanvas.setPointerCapture(e.pointerId)
-  })
-  zoomCanvas.addEventListener('pointermove', (e) => {
-    if (!drag) return
-    // Pan units are mm of the unzoomed view: fovMM shrinks with the zoom level, so scale it back up.
-    const k = (zoomNv!.screenSlices[0].fovMM[0] * zoom.level) / zoomCanvas.clientWidth
-    zoomPan[0] += (e.clientX - drag.x) * k
-    zoomPan[1] -= (e.clientY - drag.y) * k
-    drag = { x: e.clientX, y: e.clientY }
-    applyZoom()
-  })
-  zoomCanvas.addEventListener('pointerup', () => (drag = null))
-}
-
-function buildGutter() {
-  const col = document.createElement('div')
-  col.className = 'col'
-  col.innerHTML = '<h2>&nbsp;</h2><div id="gutter"></div>'
-  cols.prepend(col)
-  const gutter = col.querySelector('#gutter') as HTMLDivElement
-  const groups = VIEW_NAMES.map((name, v) => {
-    const g = document.createElement('div')
-    g.className = 'rowctl'
-    g.innerHTML = `<button aria-label="${name}: corte seguinte">&#9650;</button><span>${name}</span><button aria-label="${name}: corte anterior">&#9660;</button>`
-    const [up, down] = Array.from(g.querySelectorAll('button'))
-    holdToRepeat(up, () => scrollView(v, 1))
-    holdToRepeat(down, () => scrollView(v, -1))
-    gutter.appendChild(g)
-    return g
-  })
-  const place = () => {
-    const canvas = cols.querySelector('canvas') as HTMLCanvasElement
-    const k = canvas.clientHeight / canvas.height
-    instances[0].screenSlices.forEach((s) => {
-      const [, t, , h] = s.leftTopWidthHeight
-      if (h > 0 && groups[s.axCorSag]) groups[s.axCorSag].style.top = `${(t + h / 2) * k}px`
-    })
-  }
-  // Arrows and magnifiers sit on the tiles, so they move whenever a canvas is resized.
-  afterResize = () => {
-    place()
-    placeLupas()
-  }
-  new ResizeObserver(() => requestAnimationFrame(afterResize)).observe(gutter)
-  afterResize()
-}
-
-function holdToRepeat(btn: HTMLButtonElement, action: () => void) {
-  let delay = 0
-  let timer = 0
-  const stop = () => {
-    clearTimeout(delay)
-    clearInterval(timer)
-  }
-  btn.addEventListener('pointerdown', (e) => {
-    e.preventDefault()
-    action()
-    delay = window.setTimeout(() => {
-      timer = window.setInterval(action, 60)
-    }, 350)
-  })
-  for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) btn.addEventListener(ev, stop)
-}
-
-function bindToolbar() {
-  const br = document.getElementById('br') as HTMLInputElement
-  const ct = document.getElementById('ct') as HTMLInputElement
-  const brv = document.getElementById('brv') as HTMLOutputElement
-  const ctv = document.getElementById('ctv') as HTMLOutputElement
-  const sync = () => {
-    view.brightness = Number(br.value)
-    view.contrast = Number(ct.value)
-    brv.textContent = String(view.brightness)
-    ctv.textContent = `${view.contrast}%`
-    applyWindow()
-  }
-  br.addEventListener('input', sync)
-  ct.addEventListener('input', sync)
-  document.getElementById('rs')!.addEventListener('click', () => {
-    br.value = '0'
-    ct.value = '100'
-    sync()
+  unsaved++
+  setStatus(slot, 'salvando...')
+  updateNav()
+  chain = chain.then(async () => {
+    for (let attempt = 0; ; attempt++) {
+      try {
+        await postRating(token, body)
+        setStatus(slot, 'salvo')
+        break
+      } catch (err) {
+        // The server said no (bad request, bad link): resending the same thing will not help.
+        if (err instanceof ApiError && err.status < 500) {
+          setStatus(slot, 'erro ao salvar', 'bad')
+          break
+        }
+        setStatus(slot, 'sem conexão, tentando de novo', 'bad')
+        await wait(Math.min(5000, 500 * 2 ** attempt))
+      }
+    }
+    unsaved--
+    updateNav()
   })
 }
 
-async function main() {
-  instances.push(...(await Promise.all(SLOTS.map(createColumn))))
-  dimsRAS = instances[0].volumes[0].dimsRAS ?? instances[0].volumes[0].dims ?? dimsRAS
-  buildGutter()
-  // Columns were created before the gutter shifted the grid, so bring every canvas to its final size once.
-  for (const nv of instances) nv.resizeListener()
-  bindToolbar()
-  bindZoom()
-  // The enlarged viewer starts below the toolbar so brightness/contrast stay usable.
-  const tb = document.getElementById('tb') as HTMLDivElement
-  document.documentElement.style.setProperty('--tbh', `${tb.getBoundingClientRect().bottom}px`)
-  applyWindow()
-  ;(window as unknown as { __view: typeof view }).__view = view
-}
-
-main().catch((err) => {
-  msg.textContent = `Erro: ${err instanceof Error ? err.message : String(err)}`
-  console.error(err)
+window.addEventListener('beforeunload', (e) => {
+  if (unsaved > 0) e.preventDefault()
 })
+
+// ---- Comment box ----
+
+const cpop = $<HTMLDivElement>('cpop')
+const cText = $<HTMLTextAreaElement>('cpop-text')
+let cSlot: string | null = null
+let cTimer = 0
+let cDirty = false
+
+function openComment(slot: string, anchor: HTMLElement) {
+  cSlot = slot
+  $('cpop-title').textContent =
+    local[slot].score === null ? `Imagem ${slot}: dê uma nota para o comentário ser salvo` : `Comentário da imagem ${slot}`
+  cText.value = local[slot].comment
+  cpop.hidden = false
+  const r = anchor.getBoundingClientRect()
+  cpop.style.left = `${Math.max(4, Math.min(r.left, window.innerWidth - 270))}px`
+  cpop.style.top = `${Math.max(4, r.top - cpop.offsetHeight - 6)}px`
+  cText.focus()
+}
+
+function closeComment() {
+  if (cSlot === null) return
+  clearTimeout(cTimer)
+  commitComment()
+  cpop.hidden = true
+  cSlot = null
+}
+
+function commitComment() {
+  if (cSlot === null || !cDirty) return
+  cDirty = false
+  save(cSlot)
+}
+
+cText.addEventListener('input', () => {
+  if (cSlot === null) return
+  local[cSlot].comment = cText.value
+  refreshCommentButton(cSlot)
+  cDirty = true
+  clearTimeout(cTimer)
+  cTimer = window.setTimeout(commitComment, 700)
+})
+document.addEventListener('pointerdown', (e) => {
+  const t = e.target as HTMLElement
+  if (!cpop.hidden && !cpop.contains(t) && !t.closest('.cbtn')) closeComment()
+})
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !cpop.hidden) closeComment()
+})
+
+function refreshCommentButton(slot: string) {
+  const b = document.querySelector<HTMLElement>(`[data-cbtn="${slot}"]`)
+  if (!b) return
+  b.classList.toggle('has', local[slot].comment.trim() !== '')
+}
+
+// ---- Page ----
+
+function buildStrips(p: PageData) {
+  p.columns.forEach(({ slot }, i) => {
+    const r = p.ratings[slot]
+    local[slot] = { score: r?.score ?? null, comment: r?.comment ?? '' }
+    strips[i].innerHTML = `
+      <div class="scores" role="group" aria-label="Nota da imagem ${slot}">
+        ${[1, 2, 3, 4, 5].map((n) => `<button data-score="${n}" aria-label="Nota ${n}">${n}</button>`).join('')}
+      </div>
+      <div class="row">
+        <button class="cbtn" data-cbtn="${slot}">Comentário</button>
+        <span data-status="${slot}"></span>
+      </div>`
+    const buttons = strips[i].querySelectorAll<HTMLButtonElement>('[data-score]')
+    const paint = () =>
+      buttons.forEach((b) => b.classList.toggle('on', Number(b.dataset.score) === local[slot].score))
+    paint()
+    buttons.forEach((b) =>
+      b.addEventListener('click', () => {
+        const score = Number(b.dataset.score)
+        if (local[slot].score === score) return
+        local[slot].score = score
+        paint()
+        save(slot)
+      }),
+    )
+    const cbtn = strips[i].querySelector('.cbtn') as HTMLButtonElement
+    cbtn.addEventListener('click', () => {
+      closeComment()
+      openComment(slot, cbtn)
+    })
+    refreshCommentButton(slot)
+    setStatus(slot, r ? 'salvo' : 'sem nota', r ? '' : 'missing')
+  })
+  // A slot whose first rating was just sent no longer reads "sem nota"; save() sets its own status.
+}
+
+const missingSlots = () => (page ? page.columns.map((c) => c.slot).filter((s) => local[s].score === null) : [])
+
+function updateNav() {
+  if (!page) return
+  const rated = page.columns.length - missingSlots().length
+  const last = page.position === page.total_pages
+  $('progress').textContent = `Página ${page.position} de ${page.total_pages} | Sequência: ${page.sequence} | ${rated} de ${page.columns.length} notas`
+  ;($('prev') as HTMLButtonElement).disabled = page.position <= 1
+  const next = $<HTMLButtonElement>('next')
+  next.disabled = unsaved > 0
+  next.innerHTML = unsaved > 0 ? 'Salvando...' : last ? 'Finalizar' : 'Próxima &rarr;'
+}
+
+async function goTo(position: number) {
+  closeComment()
+  $<HTMLButtonElement>('prev').disabled = true
+  $<HTMLButtonElement>('next').disabled = true
+  try {
+    const p = await getPage(token, position)
+    if (!viewerReady) {
+      show('app')
+      await initViewer()
+      viewerReady = true
+    } else {
+      show('app')
+    }
+    page = p
+    buildStrips(p)
+    updateNav()
+    await showPage(p.columns)
+    preloadNext(p)
+  } catch (err) {
+    $('progress').textContent = `Erro: ${err instanceof Error ? err.message : String(err)}`
+    $<HTMLButtonElement>('prev').disabled = false
+    $<HTMLButtonElement>('next').disabled = false
+  }
+}
+
+// Pull the next page's volumes into the browser cache while the rater works on this one.
+async function preloadNext(p: PageData) {
+  if (p.position >= p.total_pages) return
+  try {
+    const nextPage = await getPage(token, p.position + 1)
+    for (const c of nextPage.columns) await prefetchVolume(c.url)
+  } catch {
+    /* optimisation only */
+  }
+}
+
+// ---- Dialog ----
+
+function confirmDialog(text: string, no: string, yes: string): Promise<boolean> {
+  $('modal-text').textContent = text
+  $('modal-no').textContent = no
+  $('modal-yes').textContent = yes
+  $('modal').hidden = false
+  return new Promise((resolve) => {
+    const done = (v: boolean) => {
+      $('modal').hidden = true
+      $('modal-no').onclick = $('modal-yes').onclick = null
+      resolve(v)
+    }
+    $('modal-no').onclick = () => done(false)
+    $('modal-yes').onclick = () => done(true)
+  })
+}
+
+async function leavePage(): Promise<boolean> {
+  closeComment()
+  const missing = missingSlots()
+  if (missing.length > 0) {
+    const names = missing.sort().join(', ')
+    const ok = await confirmDialog(
+      `Falta nota na${missing.length > 1 ? 's imagens' : ' imagem'} ${names}. Deseja seguir assim mesmo?`,
+      'Voltar e avaliar',
+      'Seguir sem nota',
+    )
+    if (!ok) return false
+  }
+  await chain
+  return true
+}
+
+$('prev').addEventListener('click', async () => {
+  if (!page) return
+  closeComment()
+  await chain
+  goTo(page.position - 1)
+})
+
+$('next').addEventListener('click', async () => {
+  if (!page || !(await leavePage())) return
+  if (page.position < page.total_pages) goTo(page.position + 1)
+  else finish()
+})
+
+// ---- Screens ----
+
+async function finish() {
+  session = await getSession(token)
+  const left = session.total_pages - session.completed_pages
+  const back = $<HTMLButtonElement>('done-back')
+  if (left > 0) {
+    $('done-text').textContent = `Você chegou ao fim, mas ${left} ${left > 1 ? 'páginas ainda têm' : 'página ainda tem'} imagens sem nota. Suas notas já estão salvas; você pode completar agora ou depois, pelo mesmo link.`
+    back.hidden = false
+  } else {
+    $('done-text').textContent = 'Você avaliou todas as páginas. Suas notas foram salvas. Pode fechar esta janela.'
+    back.hidden = true
+  }
+  show('s-done')
+}
+
+$('done-back').addEventListener('click', () => goTo(session.next_position ?? 1))
+
+function tokenFromText(text: string): string {
+  const t = text.trim()
+  const m = t.match(/[?&]t=([^&#\s]+)/)
+  return decodeURIComponent(m ? m[1] : t)
+}
+
+async function enter(t: string) {
+  const info = await getSession(t)
+  token = t
+  session = info
+  history.replaceState(null, '', `?t=${encodeURIComponent(t)}`)
+  if (info.finished) return finish()
+  $('intro-title').textContent = info.name ? `Bem-vindo, ${info.name}` : 'Bem-vindo'
+  $('intro-progress').textContent =
+    info.completed_pages > 0
+      ? `Você já completou ${info.completed_pages} de ${info.total_pages} páginas. Vamos continuar de onde parou.`
+      : `Serão ${info.total_pages} páginas.`
+  $('intro-go').textContent = info.completed_pages > 0 ? 'Continuar' : 'Começar'
+  show('s-intro')
+}
+
+$('intro-go').addEventListener('click', () => goTo(session.next_position ?? 1))
+
+$('token-go').addEventListener('click', async () => {
+  $('token-err').textContent = ''
+  try {
+    await enter(tokenFromText($<HTMLInputElement>('token-in').value))
+  } catch (err) {
+    $('token-err').textContent = err instanceof Error ? err.message : String(err)
+  }
+})
+
+async function boot() {
+  const t = new URLSearchParams(location.search).get('t')
+  if (!t) return show('s-token')
+  try {
+    await enter(t)
+  } catch (err) {
+    show('s-token')
+    $('token-err').textContent = err instanceof ApiError && err.status === 404 ? err.message : `Não foi possível entrar: ${err instanceof Error ? err.message : String(err)}`
+  }
+}
+
+boot()

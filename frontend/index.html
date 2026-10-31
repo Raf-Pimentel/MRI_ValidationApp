@@ -3,17 +3,33 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MRI Validation - spike</title>
+    <title>Avaliação de imagens de MRI</title>
     <style>
       html, body { margin: 0; height: 100%; background: #111; color: #ddd; font-family: sans-serif; }
-      #wrap { height: 100%; display: flex; flex-direction: column; }
-      #msg { padding: 6px 10px 0; font-size: 13px; }
+      button { background: #222; color: #ddd; border: 1px solid #555; border-radius: 6px; cursor: pointer; }
+      button:hover:not(:disabled) { background: #333; }
+      button:disabled { opacity: .45; cursor: default; }
+      button.primary { background: #2d5a8a; border-color: #5b8fc4; color: #fff; padding: 8px 18px; font-size: 15px; }
+      button.primary:hover:not(:disabled) { background: #3a6fa5; }
+
+      .screen { height: 100%; overflow: auto; box-sizing: border-box; padding: 32px 16px; }
+      .screen[hidden] { display: none; }
+      .card { max-width: 640px; margin: 0 auto; line-height: 1.5; }
+      .card h1 { font-size: 22px; margin-top: 0; }
+      .card ul { padding-left: 20px; }
+      .card input[type=text] { width: 100%; box-sizing: border-box; padding: 8px; font-size: 14px; background: #1b1b1b; color: #ddd; border: 1px solid #555; border-radius: 6px; margin: 8px 0 12px; }
+      .err { color: #f08a8a; min-height: 1.4em; }
+
+      #app { height: 100%; display: flex; flex-direction: column; }
+      #app[hidden] { display: none; }
+      #nav { display: flex; align-items: center; gap: 12px; padding: 6px 10px; font-size: 14px; }
+      #nav button { height: 28px; padding: 0 12px; }
+      #progress { flex: 1; text-align: center; }
+      #msg { padding: 0 10px; font-size: 12px; color: #888; }
       #tb { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 6px 10px; font-size: 13px; }
       #tb label { display: flex; align-items: center; gap: 6px; }
       #tb input[type=range] { width: 130px; }
       #tb output { min-width: 34px; text-align: right; color: #aaa; }
-      button { background: #222; color: #ddd; border: 1px solid #555; border-radius: 6px; cursor: pointer; }
-      button:hover { background: #333; }
       #cols { flex: 1; min-height: 0; display: grid; grid-template-columns: 44px repeat(5, minmax(0, 1fr)); gap: 6px; padding: 0 6px 6px; }
       .col { display: flex; flex-direction: column; min-height: 0; }
       .col h2 { margin: 0 0 4px; font-size: 13px; font-weight: 500; text-align: center; }
@@ -21,6 +37,19 @@
       .col canvas { outline: none; width: 100%; height: 100%; display: block; }
       .lupa { position: absolute; width: 26px; height: 26px; padding: 0; font-size: 13px; opacity: .75; }
       .lupa:hover { opacity: 1; }
+      .strip { flex: none; height: 74px; box-sizing: border-box; padding-top: 6px; display: flex; flex-direction: column; gap: 4px; }
+      .scores { display: flex; gap: 3px; }
+      .scores button { flex: 1; height: 30px; padding: 0; font-size: 14px; }
+      .scores button.on { background: #2d5a8a; border-color: #8ab8e6; color: #fff; }
+      .strip .row { display: flex; gap: 4px; align-items: center; font-size: 11px; color: #888; min-height: 24px; }
+      .strip .row .cbtn { height: 22px; padding: 0 6px; font-size: 11px; }
+      .strip .row .cbtn.has { border-color: #8ab8e6; }
+      .strip .status { margin-left: auto; }
+      .strip .status.bad { color: #f08a8a; }
+      .strip .status.missing { color: #e8c170; }
+      #cpop { position: fixed; z-index: 20; width: 260px; background: #1b1b1b; border: 1px solid #666; border-radius: 6px; padding: 8px; font-size: 12px; }
+      #cpop[hidden] { display: none; }
+      #cpop textarea { width: 100%; box-sizing: border-box; height: 80px; background: #111; color: #ddd; border: 1px solid #555; border-radius: 4px; font-family: inherit; font-size: 13px; resize: none; }
       #zoom { position: fixed; left: 0; right: 0; bottom: 0; top: var(--tbh, 80px); background: #111; z-index: 10; display: flex; flex-direction: column; }
       #zoom[hidden] { display: none; }
       #zbar { display: flex; align-items: center; gap: 12px; padding: 6px 10px; font-size: 13px; }
@@ -30,11 +59,65 @@
       #gutter { position: relative; flex: 1; min-height: 0; }
       .rowctl { position: absolute; left: 0; right: 0; transform: translateY(-50%); display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11px; color: #aaa; }
       .rowctl button { width: 30px; height: 26px; padding: 0; font-size: 14px; }
+
+      #modal { position: fixed; inset: 0; background: rgba(0, 0, 0, .65); z-index: 30; display: flex; align-items: center; justify-content: center; }
+      #modal[hidden] { display: none; }
+      #modal .box { background: #1b1b1b; border: 1px solid #666; border-radius: 8px; padding: 18px 22px; max-width: 420px; line-height: 1.45; }
+      #modal .btns { display: flex; gap: 10px; justify-content: flex-end; margin-top: 14px; }
+      #modal .btns button { padding: 6px 14px; }
     </style>
   </head>
   <body>
-    <div id="wrap">
-      <div id="msg">Carregando volumes...</div>
+    <div id="s-token" class="screen" hidden>
+      <div class="card">
+        <h1>Avaliação de imagens de MRI</h1>
+        <p>Cole abaixo o link ou o código de acesso que você recebeu.</p>
+        <input type="text" id="token-in" placeholder="Código de acesso" autocomplete="off" />
+        <div class="err" id="token-err"></div>
+        <button class="primary" id="token-go">Entrar</button>
+      </div>
+    </div>
+
+    <div id="s-intro" class="screen" hidden>
+      <div class="card">
+        <h1 id="intro-title">Bem-vindo</h1>
+        <p>Você vai avaliar cortes de ressonância magnética cerebral. Em cada página aparecem <b>cinco imagens do mesmo paciente</b>, lado a lado, cada uma em três vistas (axial, coronal e sagital).</p>
+        <p><b>Quão real parece esta imagem de ressonância?</b> Considere anatomia, textura e contraste. Avalie o aspecto de imagem real, independentemente de haver ou não doença. Dê a cada imagem uma nota de 1 a 5:</p>
+        <ul>
+          <li><b>1</b>: claramente artificial</li>
+          <li><b>2</b>: provavelmente artificial</li>
+          <li><b>3</b>: incerta</li>
+          <li><b>4</b>: provavelmente real</li>
+          <li><b>5</b>: indistinguível de uma ressonância real</li>
+        </ul>
+        <p>Como usar:</p>
+        <ul>
+          <li>Role a roda do mouse sobre uma vista para trocar de corte; a mudança vale para as cinco imagens.</li>
+          <li>Use a lupa no canto de cada vista para ampliar.</li>
+          <li>Brilho e contraste valem para todas as imagens.</li>
+          <li>Suas notas são salvas na hora. Você pode voltar e mudar uma nota quando quiser, e pode fechar a página e continuar depois pelo mesmo link.</li>
+          <li>O comentário é opcional.</li>
+        </ul>
+        <p id="intro-progress"></p>
+        <button class="primary" id="intro-go">Começar</button>
+      </div>
+    </div>
+
+    <div id="s-done" class="screen" hidden>
+      <div class="card">
+        <h1>Obrigado!</h1>
+        <p id="done-text"></p>
+        <button class="primary" id="done-back" hidden>Voltar às páginas sem nota</button>
+      </div>
+    </div>
+
+    <div id="app" hidden>
+      <div id="nav">
+        <button id="prev">&larr; Anterior</button>
+        <div id="progress"></div>
+        <button id="next">Próxima &rarr;</button>
+      </div>
+      <div id="msg"></div>
       <div id="tb">
         <label>Brilho <input type="range" id="br" min="-50" max="50" value="0" step="1" /><output id="brv">0</output></label>
         <label>Contraste <input type="range" id="ct" min="50" max="300" value="100" step="1" /><output id="ctv">100%</output></label>
@@ -51,6 +134,18 @@
           <button id="zclose" style="margin-left:auto;height:26px;padding:0 10px">Fechar</button>
         </div>
         <canvas id="zoomcv"></canvas>
+      </div>
+    </div>
+
+    <div id="cpop" hidden>
+      <div id="cpop-title" style="margin-bottom:4px"></div>
+      <textarea id="cpop-text" maxlength="2000" placeholder="Comentário (opcional)"></textarea>
+    </div>
+
+    <div id="modal" hidden>
+      <div class="box">
+        <div id="modal-text"></div>
+        <div class="btns"><button id="modal-no"></button><button id="modal-yes" class="primary"></button></div>
       </div>
     </div>
     <script type="module" src="/src/main.ts"></script>
