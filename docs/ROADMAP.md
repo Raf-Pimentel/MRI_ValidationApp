@@ -5,9 +5,9 @@ Legenda: `[ ]` a fazer, `[~]` em andamento, `[x]` feito. Cada tarefa tem critér
 ## Estado atual
 
 - Última atualização: 2026-10-31
-- Fase em curso: Fases 0 e 1 concluídas (T0.1 a T1.5); próxima: T2.1
+- Fase em curso: Fases 0, 1 e 2 concluídas (T0.1 a T2.7); próxima: T3.1
 - Pendências de decisão que bloqueiam: ver `PLANO.md`, seção 4 (escala 1–5, desenho amostral). Nenhuma bloqueia as Fases 0 a 2.
-- Anotações da última sessão: Fase 1 feita em `scripts/prepare_data.py` (14 testes em `scripts/tests/`, `python -m pytest scripts`). Os 5 volumes de cada caso saem em int16 sem compressão, com o mesmo header (mesma escala slope/intercept calculada sobre a faixa do caso inteiro) e portanto o mesmo tamanho em bytes. Header criado do zero, sem `descrip` nem nomes. Manifesto em JSON (`cases[].volumes[]` com slot, opaque_id, shape, spacing). O teste de vazamento varre nomes, manifesto e headers (não os voxels, para não dar falso positivo por acaso) e usa os nomes de modelo do gabarito só dentro do teste. Cada reempacotamento gera UUIDs novos; o script se recusa a sobrescrever a saída sem `--force`. Conferido no Niivue: o `.nii` int16 do case_01/A carrega com o mesmo shape e, aplicando slope/intercept, difere do original em no máximo 1,5e-5 (valores até 1). Dependência nova só nos scripts: nibabel. Obs.: as 5 tarefas foram feitas numa sessão só, a pedido do Rafael.
+- Anotações da última sessão: Fase 2 feita em `backend/` (39 testes, `python -m pytest backend`). Rotas sob `/api/session/{token}` (sessão, `page/{n}`, `rating`) e `/api/vol/{opaque_id}`; o token vai no caminho, não em header, para o front poder montar o link simples. A página não traz id do caso, só `position`; a nota é enviada com `position` + `slot` e o servidor descobre o caso. O JSON da página tem `sequence`, `columns[{slot,url}]` e `ratings` (nota vigente por slot, para retomar). Ordem de páginas e colunas sai de `random.Random` com semente em texto; é gravada em `assignment` na primeira entrada. `rating_event` tem gatilhos SQLite que barram UPDATE e DELETE. O carregador recusa caso cujos 5 arquivos tenham tamanhos diferentes. Ver `docs/decisions/0002-backend.md`. Pendente: o desenho amostral (PLANO seção 4, item 2) ainda não existe; por ora cada médico recebe `min(50, nº de casos)` páginas em ordem sorteada, sem repetir caso. Não rodei o servidor com uvicorn (só o cliente de teste, com os 8 casos reais: os 5 volumes saem com 6.212.782 bytes). Sem CORS: o front deve usar proxy do Vite (T3.1). Obs.: as 7 tarefas foram feitas numa sessão só, a pedido do Rafael.
 
 ## Fase 0 — Spike do viewer (usa o `case_01` do testkit)
 
@@ -33,13 +33,13 @@ Objetivo: transformar um lote no formato do testkit em arquivos servíveis, sem 
 
 ## Fase 2 — Backend (`backend/`)
 
-- [ ] **T2.1** Esqueleto FastAPI + SQLite (WAL) + modelos (`case`, `volume`, `rater`, `assignment`, `rating_event`). CP: sobe e cria o banco.
-- [ ] **T2.2** Carregar o manifesto no banco. CP: casos e volumes consultáveis, sem campo de origem.
-- [ ] **T2.3** Token por médico e criação de `rater` com semente. CP: link com token abre a sessão; token inválido dá erro claro.
-- [ ] **T2.4** Sorteio reprodutível da ordem das páginas e das colunas por semente. CP: mesma semente dá a mesma ordem; testes de distribuição sem erro.
-- [ ] **T2.5** Endpoint de página (dados do caso e ordem dos slots, sem origem) e endpoint de volume por ID opaco. CP: o JSON da página não contém nada além de slot, sequência e URLs opacas.
-- [ ] **T2.6** Endpoint de nota append-only e idempotente (`client_event_id`). CP: reenvio não duplica; corrigir cria nova linha; nota fora de 1–5 é rejeitada.
-- [ ] **T2.7** Retomar progresso. CP: reabrir o link leva à primeira página sem nota completa.
+- [x] **T2.1** Esqueleto FastAPI + SQLite (WAL) + modelos (`case`, `volume`, `rater`, `assignment`, `rating_event`). CP: sobe e cria o banco.
+- [x] **T2.2** Carregar o manifesto no banco. CP: casos e volumes consultáveis, sem campo de origem.
+- [x] **T2.3** Token por médico e criação de `rater` com semente. CP: link com token abre a sessão; token inválido dá erro claro.
+- [x] **T2.4** Sorteio reprodutível da ordem das páginas e das colunas por semente. CP: mesma semente dá a mesma ordem; testes de distribuição sem erro.
+- [x] **T2.5** Endpoint de página (dados do caso e ordem dos slots, sem origem) e endpoint de volume por ID opaco. CP: o JSON da página não contém nada além de slot, sequência e URLs opacas.
+- [x] **T2.6** Endpoint de nota append-only e idempotente (`client_event_id`). CP: reenvio não duplica; corrigir cria nova linha; nota fora de 1–5 é rejeitada.
+- [x] **T2.7** Retomar progresso. CP: reabrir o link leva à primeira página sem nota completa.
 
 ## Fase 3 — Front completo
 

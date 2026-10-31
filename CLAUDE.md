@@ -26,7 +26,8 @@ Fonte da verdade do projeto: `PLANO.md` (decisões e requisitos) e `docs/ROADMAP
 - Volumes de desenvolvimento: copiar os 5 `.nii.gz` de um caso do testkit para `data/dev/case_XX/` (pasta ignorada pelo git)
 - Preparar os dados (Fase 1): `pip install -r scripts/requirements.txt`, depois `python scripts/prepare_data.py radiologist_grading_testkit/radiologist_grading_testkit/testkit data/prepared --force`. Gera `data/prepared/volumes/<uuid>.nii` e `data/prepared/manifest.json`. Nunca lê o gabarito.
 - Testes dos scripts: `python -m pytest scripts` (na raiz do repositório).
-- Back: a preencher.
+- Back (dentro de `backend/`): `pip install -r requirements.txt`; `python -m app.cli load-manifest` (carrega `data/prepared/manifest.json` em `data/app.db`); `python -m app.cli create-rater --name "Fulano"` (imprime o token); `python -m uvicorn app.main:app --factory --port 8000`. Variáveis opcionais: `MRI_DB_PATH`, `MRI_PREPARED_DIR`, `MRI_PAGES_PER_RATER`.
+- Testes do back: `python -m pytest backend` (na raiz). `python -m pytest backend scripts` roda os dois.
 
 ## Como trabalhar aqui
 
