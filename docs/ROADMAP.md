@@ -5,9 +5,9 @@ Legenda: `[ ]` a fazer, `[~]` em andamento, `[x]` feito. Cada tarefa tem critér
 ## Estado atual
 
 - Última atualização: 2026-10-31
-- Fase em curso: Fase 0 (T0.1 a T0.3 feitas; próxima: T0.4)
+- Fase em curso: Fase 0 (T0.1 a T0.4 feitas; próxima: T0.5)
 - Pendências de decisão que bloqueiam: ver `PLANO.md`, seção 4 (escala 1–5, desenho amostral). Nenhuma bloqueia as Fases 0 a 2.
-- Anotações da última sessão: T0.3 ok, é a hipótese central do projeto e funcionou. Um handler de wheel próprio (fase de captura) descobre a vista sob o mouse via `nv.screenSlices` e muda só um componente de `scene.crosshairPos` (axial=z, coronal=y, sagital=x), em fração do volume, nas 5 instâncias. Clique, arrasto, toque e teclado são bloqueados em fase de captura, senão o Niivue move o crosshair da coluna e ela sai de sincronia (observado em teste). Crosshair escondido com `crosshairWidth: 0`. Verificado no navegador: rolar uma vista mexe só nela e nas 5 colunas, sem mudar as outras. Cada evento de wheel move 1 corte; pode precisar de ajuste para trackpad.
+- Anotações da última sessão: T0.4 ok. Setas ▲▼ por vista, na lateral, alinhadas à posição de cada vista via `screenSlices` e com repetição ao segurar; ▲ = corte seguinte (+1), ▼ = anterior (−1). Brilho (−50 a +50) e contraste (50% a 300%) globais mudam `cal_min`/`cal_max` das 5 instâncias; o padrão é a janela fixa 0–1 (dados já em [0,1]); Restaurar volta a 0 e 100%. Estado exposto em `window.__view` para o `viewer_state` futuro. Verificado no navegador: setas mexem só a vista delas nas 5 colunas, sliders e Restaurar afetam todas. Observação: letras de orientação (A, S, L, P) aparecem nas imagens; decidir na T0.5 se escondemos.
 
 ## Fase 0 — Spike do viewer (usa o `case_01` do testkit)
 
@@ -16,7 +16,7 @@ Objetivo: provar que o viewer funciona como imaginamos, antes de construir o res
 - [x] **T0.1** Criar `frontend/` (Vite + TS + Niivue) e exibir um volume do `case_01`. CP: abre em localhost e mostra as 3 vistas.
 - [x] **T0.2** 5 instâncias Niivue lado a lado, cada uma com 3 vistas em coluna. CP: os 5 volumes do caso aparecem em 15 painéis.
 - [x] **T0.3** Scroll independente por vista, aplicado às 5 colunas, com o clique de crosshair desativado. CP: rolar sobre uma axial move só as 5 axiais; coronal e sagital não mudam.
-- [ ] **T0.4** Setas por linha e brilho/contraste globais com "Restaurar". CP: ambos afetam as 5 colunas.
+- [x] **T0.4** Setas por linha e brilho/contraste globais com "Restaurar". CP: ambos afetam as 5 colunas.
 - [ ] **T0.5** Viewer ampliado (lupa): scroll, zoom contínuo e troca de coluna mantendo a vista. CP: scroll no ampliado acompanha a vista na grade.
 - [ ] **T0.6** Registrar em `docs/decisions/0001-viewer.md` o que funcionou, limitações e a decisão final (Niivue sim ou não). CP: documento escrito.
 

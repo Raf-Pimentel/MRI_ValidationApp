@@ -11,6 +11,8 @@ const msg = document.getElementById('msg') as HTMLDivElement
 
 // Shared position, as fractions of the volume. One component per view: scrolling a view changes only its own.
 const pos = [0.5, 0.5, 0.5]
+// Global display window (same for every image). Data is already in [0, 1], so the default window is 0-1.
+const view = { brightness: 0, contrast: 100 }
 const instances: Niivue[] = []
 let dimsRAS: number[] = [0, 1, 1, 1]
 
@@ -29,8 +31,21 @@ function render() {
   msg.textContent = `${instances.length} volumes | ${parts.join(' | ')}`
 }
 
-function scrollView(view: number, steps: number) {
-  const axis = AXIS_OF_VIEW[view]
+function applyWindow() {
+  const bright = view.brightness / 100
+  const width = 1 / (view.contrast / 100)
+  const center = 0.5 - bright
+  for (const nv of instances) {
+    const vol = nv.volumes[0]
+    vol.cal_min = center - width / 2
+    vol.cal_max = center + width / 2
+    nv.updateGLVolume()
+  }
+  render()
+}
+
+function scrollView(viewIndex: number, steps: number) {
+  const axis = AXIS_OF_VIEW[viewIndex]
   const n = dimsRAS[axis + 1]
   pos[axis] = Math.min(1, Math.max(0, pos[axis] + steps / n))
   render()
@@ -80,8 +95,8 @@ async function createColumn(slot: string): Promise<Niivue> {
     (e) => {
       e.preventDefault()
       e.stopImmediatePropagation()
-      const view = tileUnderMouse(nv, canvas, e)
-      if (view !== null) scrollView(view, e.deltaY > 0 ? 1 : -1)
+      const tile = tileUnderMouse(nv, canvas, e)
+      if (tile !== null) scrollView(tile, e.deltaY > 0 ? 1 : -1)
     },
     { capture: true, passive: false },
   )
@@ -98,10 +113,79 @@ async function createColumn(slot: string): Promise<Niivue> {
   return nv
 }
 
+function buildGutter() {
+  const col = document.createElement('div')
+  col.className = 'col'
+  col.innerHTML = '<h2>&nbsp;</h2><div id="gutter"></div>'
+  cols.prepend(col)
+  const gutter = col.querySelector('#gutter') as HTMLDivElement
+  const groups = VIEW_NAMES.map((name, v) => {
+    const g = document.createElement('div')
+    g.className = 'rowctl'
+    g.innerHTML = `<button aria-label="${name}: corte seguinte">&#9650;</button><span>${name}</span><button aria-label="${name}: corte anterior">&#9660;</button>`
+    const [up, down] = Array.from(g.querySelectorAll('button'))
+    holdToRepeat(up, () => scrollView(v, 1))
+    holdToRepeat(down, () => scrollView(v, -1))
+    gutter.appendChild(g)
+    return g
+  })
+  const place = () => {
+    const canvas = cols.querySelector('canvas') as HTMLCanvasElement
+    const k = canvas.clientHeight / canvas.height
+    instances[0].screenSlices.forEach((s) => {
+      const [, t, , h] = s.leftTopWidthHeight
+      if (h > 0 && groups[s.axCorSag]) groups[s.axCorSag].style.top = `${(t + h / 2) * k}px`
+    })
+  }
+  new ResizeObserver(() => requestAnimationFrame(place)).observe(gutter)
+  place()
+}
+
+function holdToRepeat(btn: HTMLButtonElement, action: () => void) {
+  let delay = 0
+  let timer = 0
+  const stop = () => {
+    clearTimeout(delay)
+    clearInterval(timer)
+  }
+  btn.addEventListener('pointerdown', (e) => {
+    e.preventDefault()
+    action()
+    delay = window.setTimeout(() => {
+      timer = window.setInterval(action, 60)
+    }, 350)
+  })
+  for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) btn.addEventListener(ev, stop)
+}
+
+function bindToolbar() {
+  const br = document.getElementById('br') as HTMLInputElement
+  const ct = document.getElementById('ct') as HTMLInputElement
+  const brv = document.getElementById('brv') as HTMLOutputElement
+  const ctv = document.getElementById('ctv') as HTMLOutputElement
+  const sync = () => {
+    view.brightness = Number(br.value)
+    view.contrast = Number(ct.value)
+    brv.textContent = String(view.brightness)
+    ctv.textContent = `${view.contrast}%`
+    applyWindow()
+  }
+  br.addEventListener('input', sync)
+  ct.addEventListener('input', sync)
+  document.getElementById('rs')!.addEventListener('click', () => {
+    br.value = '0'
+    ct.value = '100'
+    sync()
+  })
+}
+
 async function main() {
   instances.push(...(await Promise.all(SLOTS.map(createColumn))))
   dimsRAS = instances[0].volumes[0].dimsRAS ?? instances[0].volumes[0].dims ?? dimsRAS
-  render()
+  buildGutter()
+  bindToolbar()
+  applyWindow()
+  ;(window as unknown as { __view: typeof view }).__view = view
 }
 
 main().catch((err) => {
