@@ -5,9 +5,9 @@ Legenda: `[ ]` a fazer, `[~]` em andamento, `[x]` feito. Cada tarefa tem critér
 ## Estado atual
 
 - Última atualização: 2026-10-31
-- Fase em curso: Fase 0 concluída (T0.1 a T0.6); próxima: T1.1
+- Fase em curso: Fase 0 concluída (T0.1 a T0.7); próxima: T1.1
 - Pendências de decisão que bloqueiam: ver `PLANO.md`, seção 4 (escala 1–5, desenho amostral). Nenhuma bloqueia as Fases 0 a 2.
-- Anotações da última sessão: T0.6 ok. Decisão registrada em `docs/decisions/0001-viewer.md`: usar Niivue (5 colunas + 1 instância para o ampliado). Limitações a tratar na Fase 3: guardar o índice inteiro do corte por vista, reaproveitar instâncias na pré-carga, testar em outros navegadores e com touchpad.
+- Anotações da última sessão: T0.7 ok. Causa do problema com o zoom do navegador: o Niivue só redimensiona o desenho no evento `resize` da janela e a página não o repassava; o desenho ficava com o tamanho do carregamento (e a coluna A com o de uma coluna estreita, o que também borrava a imagem). Agora cada canvas tem um `ResizeObserver` que chama `resizeListener()` e reposiciona setas e lupas. Verificado mudando o tamanho da janela de 900 a 2400 px: os 5 canvases sempre com tamanho = tamanho na tela × escala, setas alinhadas, lupas nos cantos. Não consegui apertar Ctrl+ de verdade no painel do app; Rafael, confira no seu navegador. Dados do ROADMAP anteriores: viewer decidido em `docs/decisions/0001-viewer.md`; faixa de notas fica para a T3.2.
 
 ## Fase 0 — Spike do viewer (usa o `case_01` do testkit)
 
@@ -19,6 +19,7 @@ Objetivo: provar que o viewer funciona como imaginamos, antes de construir o res
 - [x] **T0.4** Setas por linha e brilho/contraste globais com "Restaurar". CP: ambos afetam as 5 colunas.
 - [x] **T0.5** Viewer ampliado (lupa): scroll, zoom contínuo e troca de coluna mantendo a vista. CP: scroll no ampliado acompanha a vista na grade.
 - [x] **T0.6** Registrar em `docs/decisions/0001-viewer.md` o que funcionou, limitações e a decisão final (Niivue sim ou não). CP: documento escrito.
+- [x] **T0.7** Fazer o viewer acompanhar o zoom do navegador (Ctrl + e Ctrl −) e o redimensionamento da janela. Feedback do Rafael ao validar a Fase 0. CP: com zoom de 50% a 200% as 15 imagens continuam nítidas, sem corte e sem desalinhar as colunas.
 
 ## Fase 1 — Preparação dos dados (`scripts/`)
 
@@ -43,7 +44,7 @@ Objetivo: transformar um lote no formato do testkit em arquivos servíveis, sem 
 ## Fase 3 — Front completo
 
 - [ ] **T3.1** Integrar o front do spike com a API (carregar página e volumes). CP: página real exibida com a ordem sorteada.
-- [ ] **T3.2** Nota 1–5 por coluna com autosave e comentário opcional. CP: recarregar a página mantém as notas.
+- [ ] **T3.2** Nota 1–5 por coluna com autosave e comentário opcional. Reservar uma faixa fixa abaixo das imagens, com as notas alinhadas às colunas (as imagens ficam menores; a lupa dá o detalhe). CP: recarregar a página mantém as notas e a grade ainda cabe na tela.
 - [ ] **T3.3** Anterior/Próxima, progresso (n/50) e aviso de colunas sem nota. CP: não finaliza com nota faltando sem aviso.
 - [ ] **T3.4** Tela de entrada, instruções (em português) e tela final. CP: fluxo completo de ponta a ponta no navegador.
 - [ ] **T3.5** Registrar o `viewer_state` (cortes e brilho/contraste) em cada nota. CP: aparece na linha gravada.

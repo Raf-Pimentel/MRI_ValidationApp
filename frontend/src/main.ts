@@ -120,7 +120,19 @@ async function createColumn(slot: string): Promise<Niivue> {
   )
 
   blockPointer(canvas)
+  keepSized(nv, canvas)
   return nv
+}
+
+// Niivue only resizes on window 'resize'. Browser zoom and layout changes also change the canvas box, so watch it.
+let afterResize = () => {}
+function keepSized(nv: Niivue, canvas: HTMLCanvasElement) {
+  new ResizeObserver(() =>
+    requestAnimationFrame(() => {
+      nv.resizeListener()
+      afterResize()
+    }),
+  ).observe(canvas)
 }
 
 // No click, drag, touch or key may move Niivue's own crosshair: that would desync this column.
@@ -210,6 +222,7 @@ async function openZoom(viewIndex: number, slot: string) {
       { capture: true, passive: false },
     )
     blockPointer(zoomCanvas, true)
+    keepSized(zoomNv, zoomCanvas)
     ;(window as unknown as { __zoomNv: Niivue }).__zoomNv = zoomNv
   }
   await loadZoomSlot(slot)
@@ -279,14 +292,13 @@ function buildGutter() {
       if (h > 0 && groups[s.axCorSag]) groups[s.axCorSag].style.top = `${(t + h / 2) * k}px`
     })
   }
-  new ResizeObserver(() =>
-    requestAnimationFrame(() => {
-      place()
-      placeLupas()
-    }),
-  ).observe(gutter)
-  place()
-  placeLupas()
+  // Arrows and magnifiers sit on the tiles, so they move whenever a canvas is resized.
+  afterResize = () => {
+    place()
+    placeLupas()
+  }
+  new ResizeObserver(() => requestAnimationFrame(afterResize)).observe(gutter)
+  afterResize()
 }
 
 function holdToRepeat(btn: HTMLButtonElement, action: () => void) {
@@ -331,6 +343,8 @@ async function main() {
   instances.push(...(await Promise.all(SLOTS.map(createColumn))))
   dimsRAS = instances[0].volumes[0].dimsRAS ?? instances[0].volumes[0].dims ?? dimsRAS
   buildGutter()
+  // Columns were created before the gutter shifted the grid, so bring every canvas to its final size once.
+  for (const nv of instances) nv.resizeListener()
   bindToolbar()
   bindZoom()
   // The enlarged viewer starts below the toolbar so brightness/contrast stay usable.
