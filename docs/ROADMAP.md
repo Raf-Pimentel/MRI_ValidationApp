@@ -5,9 +5,9 @@ Legenda: `[ ]` a fazer, `[~]` em andamento, `[x]` feito. Cada tarefa tem critér
 ## Estado atual
 
 - Última atualização: 2026-10-31
-- Fase em curso: Fase 0 concluída (T0.1 a T0.7); próxima: T1.1
+- Fase em curso: Fases 0 e 1 concluídas (T0.1 a T1.5); próxima: T2.1
 - Pendências de decisão que bloqueiam: ver `PLANO.md`, seção 4 (escala 1–5, desenho amostral). Nenhuma bloqueia as Fases 0 a 2.
-- Anotações da última sessão: T0.7 ok. Causa do problema com o zoom do navegador: o Niivue só redimensiona o desenho no evento `resize` da janela e a página não o repassava; o desenho ficava com o tamanho do carregamento (e a coluna A com o de uma coluna estreita, o que também borrava a imagem). Agora cada canvas tem um `ResizeObserver` que chama `resizeListener()` e reposiciona setas e lupas. Verificado mudando o tamanho da janela de 900 a 2400 px: os 5 canvases sempre com tamanho = tamanho na tela × escala, setas alinhadas, lupas nos cantos. Não consegui apertar Ctrl+ de verdade no painel do app; Rafael, confira no seu navegador. Dados do ROADMAP anteriores: viewer decidido em `docs/decisions/0001-viewer.md`; faixa de notas fica para a T3.2.
+- Anotações da última sessão: Fase 1 feita em `scripts/prepare_data.py` (14 testes em `scripts/tests/`, `python -m pytest scripts`). Os 5 volumes de cada caso saem em int16 sem compressão, com o mesmo header (mesma escala slope/intercept calculada sobre a faixa do caso inteiro) e portanto o mesmo tamanho em bytes. Header criado do zero, sem `descrip` nem nomes. Manifesto em JSON (`cases[].volumes[]` com slot, opaque_id, shape, spacing). O teste de vazamento varre nomes, manifesto e headers (não os voxels, para não dar falso positivo por acaso) e usa os nomes de modelo do gabarito só dentro do teste. Cada reempacotamento gera UUIDs novos; o script se recusa a sobrescrever a saída sem `--force`. Conferir no Niivue que o `.nii` int16 com slope abre igual ao original (não testado no navegador). Dependência nova só nos scripts: nibabel. Obs.: as 5 tarefas foram feitas numa sessão só, a pedido do Rafael.
 
 ## Fase 0 — Spike do viewer (usa o `case_01` do testkit)
 
@@ -25,11 +25,11 @@ Objetivo: provar que o viewer funciona como imaginamos, antes de construir o res
 
 Objetivo: transformar um lote no formato do testkit em arquivos servíveis, sem revelar a origem.
 
-- [ ] **T1.1** Script que lê o caso (volumes + `info.txt`) sem tocar no gabarito e confere shape e orientação iguais nos 5 volumes. CP: teste passa nos 8 casos; falha com mensagem clara em um caso adulterado.
-- [ ] **T1.2** Reempacotar em inteiro de 16 bits, sem compressão, com header limpo. CP: teste confirma que os 5 volumes de cada caso têm exatamente o mesmo tamanho em bytes.
-- [ ] **T1.3** Gerar IDs opacos (UUID) e o manifesto (`case`, `slot`, `opaque_id`, shape, espaçamento, dataset, sequência). CP: nenhum nome de arquivo, caminho ou campo contém modelo ou "real".
-- [ ] **T1.4** Teste de vazamento: varrer a saída e provar que não existe a palavra de nenhum modelo nem o gabarito. CP: teste passa.
-- [ ] **T1.5** Rodar nos 8 casos e documentar o comando em `CLAUDE.md`. CP: saída em `data/` (fora do git).
+- [x] **T1.1** Script que lê o caso (volumes + `info.txt`) sem tocar no gabarito e confere shape e orientação iguais nos 5 volumes. CP: teste passa nos 8 casos; falha com mensagem clara em um caso adulterado.
+- [x] **T1.2** Reempacotar em inteiro de 16 bits, sem compressão, com header limpo. CP: teste confirma que os 5 volumes de cada caso têm exatamente o mesmo tamanho em bytes.
+- [x] **T1.3** Gerar IDs opacos (UUID) e o manifesto (`case`, `slot`, `opaque_id`, shape, espaçamento, dataset, sequência). CP: nenhum nome de arquivo, caminho ou campo contém modelo ou "real".
+- [x] **T1.4** Teste de vazamento: varrer a saída e provar que não existe a palavra de nenhum modelo nem o gabarito. CP: teste passa.
+- [x] **T1.5** Rodar nos 8 casos e documentar o comando em `CLAUDE.md`. CP: saída em `data/` (fora do git).
 
 ## Fase 2 — Backend (`backend/`)
 
