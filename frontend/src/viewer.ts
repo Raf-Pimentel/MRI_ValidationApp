@@ -94,7 +94,8 @@ async function createColumn(slot: string): Promise<Niivue> {
     b.className = 'lupa'
     b.innerHTML = '&#128269;'
     b.setAttribute('aria-label', `Ampliar ${name} da imagem ${slot}`)
-    b.addEventListener('click', () => openZoom(v, slot))
+    // The slot shown in this column changes with each page's draw, so read it when clicked, not when the column was built.
+    b.addEventListener('click', () => openZoom(v, pageColumns[SLOTS.indexOf(slot)]?.slot ?? slot))
     cv.appendChild(b)
     return b
   })
@@ -378,7 +379,10 @@ export async function showPage(columns: PageColumn[]): Promise<boolean> {
   const id = ++loadId
   closeZoom()
   pageColumns = columns
-  columns.forEach((c, i) => (titles[i].textContent = `Imagem ${c.slot}`))
+  columns.forEach((c, i) => {
+    titles[i].textContent = `Imagem ${c.slot}`
+    lupaSets[i].lupas.forEach((b, v) => b.setAttribute('aria-label', `Ampliar ${VIEW_NAMES[v]} da imagem ${c.slot}`))
+  })
   await Promise.all(columns.map((c, i) => instances[i].loadVolumes(volumeSpec(c.url))))
   if (id !== loadId) return false
   for (const nv of instances) nv.setSliceType(SLICE_TYPE.MULTIPLANAR)
