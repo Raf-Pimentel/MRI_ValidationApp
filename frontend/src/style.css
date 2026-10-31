@@ -62,8 +62,14 @@ button.primary:hover:not(:disabled) { background: var(--accent-hover); }
 #msg { padding: 0 10px; font-size: 12px; color: var(--muted); }
 #tb { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 6px 10px; font-size: 13px; color: var(--muted-2); }
 #tb label { display: flex; align-items: center; gap: 6px; }
-#tb input[type=range] { width: 130px; accent-color: var(--accent-light); }
+#tb input[type=range] { width: 130px; }
 #tb output { min-width: 34px; text-align: right; color: var(--text); font-variant-numeric: tabular-nums; }
+/* Sliders drawn by hand: the native look (and accent-color) differs between browsers, and the thumb vanished in Opera. */
+#app input[type=range] { -webkit-appearance: none; appearance: none; background: transparent; height: 16px; cursor: pointer; }
+#app input[type=range]::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: var(--border); }
+#app input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 14px; height: 14px; margin-top: -5px; border: 0; border-radius: 50%; background: var(--accent-light); }
+#app input[type=range]::-moz-range-track { height: 4px; border-radius: 2px; background: var(--border); }
+#app input[type=range]::-moz-range-thumb { width: 14px; height: 14px; border: 0; border-radius: 50%; background: var(--accent-light); }
 .btn-sm { height: 26px; padding: 0 10px; }
 .hint { color: var(--muted); }
 #tb .hint { margin-left: auto; }
