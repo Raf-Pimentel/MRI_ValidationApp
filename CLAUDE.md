@@ -20,7 +20,11 @@ Fonte da verdade do projeto: `PLANO.md` (decisões e requisitos) e `docs/ROADMAP
 
 ## Comandos
 
-(Preencher quando existirem: instalar, rodar front, rodar back, rodar testes.)
+- Instalar o front: `npm install` dentro de `frontend/`
+- Rodar o front: `npm run dev` dentro de `frontend/` (http://localhost:5173)
+- Checar tipos: `npx tsc --noEmit` dentro de `frontend/`
+- Volumes de desenvolvimento: copiar os 5 `.nii.gz` de um caso do testkit para `data/dev/case_XX/` (pasta ignorada pelo git)
+- Back e testes: a preencher.
 
 ## Como trabalhar aqui
 
