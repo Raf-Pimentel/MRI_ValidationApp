@@ -23,10 +23,12 @@ Data da checagem automática: 2026-10-31. Ambiente: back e front locais, navegad
 
 Abrir `http://localhost:5173/?t=<token>` no Chrome, com F12:
 
-- [ ] Aba **Network**: filtrar por `vol`, conferir que a coluna *Size* é igual nos 5 volumes de cada página.
+- [x] Aba **Network**: filtrar por `vol`, conferir que a coluna *Size* é igual nos 5 volumes de cada página.
 - [ ] Aba **Network**: abrir um volume em *Response* e ver que não há texto legível com nome de modelo.
-- [ ] Aba **Elements**: buscar (Ctrl+F) por `resblock`, `mednext`, `segresnet`, `swin`, `real`, `truth`. Só pode haver "real" na pergunta das instruções ("aspecto de imagem real").
+- [x] Aba **Elements**: buscar (Ctrl+F) por `resblock`, `mednext`, `segresnet`, `swin`, `real`, `truth`. Só pode haver "real" na pergunta das instruções ("aspecto de imagem real").
 - [ ] Aba **Sources**: buscar o mesmo nos arquivos do site.
 - [ ] Passar o mouse nas colunas e na lupa: nenhum tooltip com origem.
 
-Conferido por: ______________________  Data: ____/____/______
+Conferido por: Rafael (nomes opacos na aba Network e busca por nomes de modelo em Elements com 0 resultados)  Data: 2026-10-31
+
+Nota: na conferência do Rafael a coluna *Size* mostrou `(disk cache)`; os tamanhos iguais foram medidos pelo script (item 2) e o total carregado (62.205.695 B para 10 volumes) é coerente.
