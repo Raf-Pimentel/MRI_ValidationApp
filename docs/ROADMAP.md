@@ -5,16 +5,16 @@ Legenda: `[ ]` a fazer, `[~]` em andamento, `[x]` feito. Cada tarefa tem critér
 ## Estado atual
 
 - Última atualização: 2026-10-31
-- Fase em curso: Fase 0 (T0.1 feita; próxima: T0.2)
+- Fase em curso: Fase 0 (T0.1 e T0.2 feitas; próxima: T0.3)
 - Pendências de decisão que bloqueiam: ver `PLANO.md`, seção 4 (escala 1–5, desenho amostral). Nenhuma bloqueia as Fases 0 a 2.
-- Anotações da última sessão: T0.1 ok. Niivue 0.69.0 abre o `case_01` (132x173x136) em layout multiplanar em coluna, sem 3D. O crosshair vermelho aparece e será desativado na T0.3. Os volumes de dev ficam em `data/dev/` (fora do git) e o Vite os serve em `/dev-data` só em desenvolvimento.
+- Anotações da última sessão: T0.2 ok. 5 instâncias Niivue (uma por coluna) com 3 vistas em coluna, 15 painéis, os 5 volumes do `case_01` carregados em ~1 s, sem erro no console. O crosshair vermelho segue ativo (T0.3 desativa). Em janela estreita as vistas ficam pequenas; reavaliar o tamanho no layout final.
 
 ## Fase 0 — Spike do viewer (usa o `case_01` do testkit)
 
 Objetivo: provar que o viewer funciona como imaginamos, antes de construir o resto.
 
 - [x] **T0.1** Criar `frontend/` (Vite + TS + Niivue) e exibir um volume do `case_01`. CP: abre em localhost e mostra as 3 vistas.
-- [ ] **T0.2** 5 instâncias Niivue lado a lado, cada uma com 3 vistas em coluna. CP: os 5 volumes do caso aparecem em 15 painéis.
+- [x] **T0.2** 5 instâncias Niivue lado a lado, cada uma com 3 vistas em coluna. CP: os 5 volumes do caso aparecem em 15 painéis.
 - [ ] **T0.3** Scroll independente por vista, aplicado às 5 colunas, com o clique de crosshair desativado. CP: rolar sobre uma axial move só as 5 axiais; coronal e sagital não mudam.
 - [ ] **T0.4** Setas por linha e brilho/contraste globais com "Restaurar". CP: ambos afetam as 5 colunas.
 - [ ] **T0.5** Viewer ampliado (lupa): scroll, zoom contínuo e troca de coluna mantendo a vista. CP: scroll no ampliado acompanha a vista na grade.

@@ -8,13 +8,16 @@
       html, body { margin: 0; height: 100%; background: #111; color: #ddd; font-family: sans-serif; }
       #wrap { height: 100%; display: flex; flex-direction: column; }
       #msg { padding: 6px 10px; font-size: 13px; }
-      #gl { flex: 1; min-height: 0; width: 100%; display: block; }
+      #cols { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; padding: 0 6px 6px; }
+      .col { display: flex; flex-direction: column; min-height: 0; }
+      .col h2 { margin: 0 0 4px; font-size: 13px; font-weight: 500; text-align: center; }
+      .col canvas { flex: 1; min-height: 0; width: 100%; display: block; }
     </style>
   </head>
   <body>
     <div id="wrap">
-      <div id="msg">Carregando volume...</div>
-      <canvas id="gl"></canvas>
+      <div id="msg">Carregando volumes...</div>
+      <div id="cols"></div>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
