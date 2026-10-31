@@ -180,6 +180,13 @@ const zoomTitle = document.getElementById('ztitle') as HTMLSpanElement
 const zoomSlider = document.getElementById('zl') as HTMLInputElement
 const zoomOut = document.getElementById('zlv') as HTMLOutputElement
 const zoomPicks = document.getElementById('zpick') as HTMLSpanElement
+const zoomScore = document.getElementById('zscore') as HTMLSpanElement
+
+// Rating of a column, shown (read only) in the enlarged viewer. main.ts supplies it.
+let scoreOf: (slot: string) => number | null = () => null
+export function setScoreSource(fn: (slot: string) => number | null) {
+  scoreOf = fn
+}
 
 function applyZoom() {
   if (!zoomNv) return
@@ -197,6 +204,8 @@ async function loadZoomSlot(slot: string) {
   zoomNv.setSliceType(zoom.view)
   zoomTitle.textContent = `Imagem ${slot} - ${VIEW_NAMES[zoom.view]}`
   zoomPicks.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.slot === slot))
+  const score = scoreOf(slot)
+  zoomScore.textContent = score === null ? 'Nota: sem nota' : `Nota: ${score}`
   applyWindow()
   applyZoom()
 }

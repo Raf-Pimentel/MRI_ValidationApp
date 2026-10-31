@@ -1,6 +1,6 @@
 import { ApiError, getPage, getSession, postRating, prefetchVolume } from './api'
 import type { PageData, SessionInfo } from './api'
-import { getViewerState, initViewer, showPage, strips } from './viewer'
+import { getViewerState, initViewer, setScoreSource, showPage, strips } from './viewer'
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T
 
@@ -16,6 +16,7 @@ let viewerReady = false
 
 // Current rating of each slot on the page being shown (what the server holds, plus unsent edits).
 const local: Record<string, { score: number | null; comment: string }> = {}
+setScoreSource((slot) => local[slot]?.score ?? null)
 
 // ---- Saving ----
 
