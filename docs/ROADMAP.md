@@ -5,9 +5,9 @@ Legenda: `[ ]` a fazer, `[~]` em andamento, `[x]` feito. Cada tarefa tem critér
 ## Estado atual
 
 - Última atualização: 2026-10-31
-- Fase em curso: Fases 0 a 3 concluídas (T0.1 a T3.6); próxima: T4.1
+- Fase em curso: Fases 0 a 4 concluídas (T0.1 a T4.2); próxima: T5.1
 - Pendências de decisão que bloqueiam: ver `PLANO.md`, seção 4 (escala 1–5, desenho amostral). Nenhuma bloqueia as Fases 0 a 2.
-- Anotações da última sessão: Fase 3 feita em `frontend/` (`api.ts`, `viewer.ts`, `main.ts`, `index.html`). Link do médico: `/?t=<token>` (a tela de entrada também aceita o link colado). Vite faz proxy de `/api` para `localhost:8000`; o plugin `/dev-data` do spike saiu. Nota 1–5 salva na hora (cada clique ou comentário é um POST com `client_event_id`, em fila, com nova tentativa se cair a conexão); `viewer_state` = cortes (índice 1-based por vista) + brilho/contraste, conferido no banco. Brilho/contraste persistem entre páginas; cortes voltam ao meio. Próxima/Finalizar avisa colunas sem nota; a tela final diz quantas páginas ainda têm imagens sem nota e leva à primeira incompleta. Pré-carga: busca os 5 volumes da página seguinte (cache HTTP do navegador; conferido que a troca lê do cache). Texto das instruções usa a pergunta e as âncoras *propostas* do PLANO seção 4, item 1 (ainda não aprovadas). Pendente: licenças/atribuição dos datasets nas instruções (PLANO seção 4, item 4); desenho amostral (hoje 8 páginas, uma por caso); a lupa não mostra a nota da coluna (PLANO seção 6, item 4); testado no navegador só por JavaScript (o painel não gerou capturas de tela), então falta uma olhada visual de layout, principalmente a faixa de notas em telas pequenas. Ver `.claude/launch.json` para subir back e front.
+- Anotações da última sessão: Fase 4 feita em `backend/app/export.py` e rota `GET /api/admin/export.csv` (HTTP Basic: usuário qualquer, senha em `MRI_ADMIN_PASSWORD`; sem a variável a rota responde 404, senha errada 401). Uma linha por nota (`rating_event`), com `event_id`, `created_at`, `rater_id`, `rater_name`, `case`, `dataset`, `sequence`, `page_position`, `screen_position` (1–5), `slot`, `score`, `comment`, `viewer_state` (JSON em texto). Só slots, nunca origem; correções aparecem como linhas extras (a nota vigente é a última por rater, case e slot). Aberto no pandas em teste. Não há tela de admin: baixar abrindo a URL no navegador (ele pede a senha). Fase 3 (sessão anterior): feita em `frontend/` (`api.ts`, `viewer.ts`, `main.ts`, `index.html`). Link do médico: `/?t=<token>` (a tela de entrada também aceita o link colado). Vite faz proxy de `/api` para `localhost:8000`; o plugin `/dev-data` do spike saiu. Nota 1–5 salva na hora (cada clique ou comentário é um POST com `client_event_id`, em fila, com nova tentativa se cair a conexão); `viewer_state` = cortes (índice 1-based por vista) + brilho/contraste, conferido no banco. Brilho/contraste persistem entre páginas; cortes voltam ao meio. Próxima/Finalizar avisa colunas sem nota; a tela final diz quantas páginas ainda têm imagens sem nota e leva à primeira incompleta. Pré-carga: busca os 5 volumes da página seguinte (cache HTTP do navegador; conferido que a troca lê do cache). Texto das instruções usa a pergunta e as âncoras *propostas* do PLANO seção 4, item 1 (ainda não aprovadas). Pendente: licenças/atribuição dos datasets nas instruções (PLANO seção 4, item 4); desenho amostral (hoje 8 páginas, uma por caso); a lupa não mostra a nota da coluna (PLANO seção 6, item 4); testado no navegador só por JavaScript (o painel não gerou capturas de tela), então falta uma olhada visual de layout, principalmente a faixa de notas em telas pequenas. Ver `.claude/launch.json` para subir back e front.
 
 ## Fase 0 — Spike do viewer (usa o `case_01` do testkit)
 
@@ -52,8 +52,8 @@ Objetivo: transformar um lote no formato do testkit em arquivos servíveis, sem 
 
 ## Fase 4 — Exportação
 
-- [ ] **T4.1** Exportação CSV de todas as notas (uma linha por nota, com slot, posição na tela e `viewer_state`). CP: abre no pandas sem tratamento.
-- [ ] **T4.2** Proteger a rota de admin com senha por variável de ambiente. CP: sem a senha, não exporta.
+- [x] **T4.1** Exportação CSV de todas as notas (uma linha por nota, com slot, posição na tela e `viewer_state`). CP: abre no pandas sem tratamento.
+- [x] **T4.2** Proteger a rota de admin com senha por variável de ambiente. CP: sem a senha, não exporta.
 
 ## Fase 5 — Teste ponta a ponta e documentação
 

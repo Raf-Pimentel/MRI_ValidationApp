@@ -10,6 +10,7 @@ class Settings:
     db_path: Path
     prepared_dir: Path
     pages_per_rater: int = 50
+    admin_password: str | None = None  # export is disabled while unset
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -19,4 +20,5 @@ class Settings:
                 os.environ.get("MRI_PREPARED_DIR", REPO_ROOT / "data" / "prepared")
             ),
             pages_per_rater=int(os.environ.get("MRI_PAGES_PER_RATER", "50")),
+            admin_password=os.environ.get("MRI_ADMIN_PASSWORD") or None,
         )

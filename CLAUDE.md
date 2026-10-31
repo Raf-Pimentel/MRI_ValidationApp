@@ -26,7 +26,7 @@ Fonte da verdade do projeto: `PLANO.md` (decisões e requisitos) e `docs/ROADMAP
 - O front precisa do back no ar (Vite faz proxy de `/api` para `localhost:8000`). Abrir `http://localhost:5173/?t=<token>`.
 - Preparar os dados (Fase 1): `pip install -r scripts/requirements.txt`, depois `python scripts/prepare_data.py radiologist_grading_testkit/radiologist_grading_testkit/testkit data/prepared --force`. Gera `data/prepared/volumes/<uuid>.nii` e `data/prepared/manifest.json`. Nunca lê o gabarito.
 - Testes dos scripts: `python -m pytest scripts` (na raiz do repositório).
-- Back (dentro de `backend/`): `pip install -r requirements.txt`; `python -m app.cli load-manifest` (carrega `data/prepared/manifest.json` em `data/app.db`); `python -m app.cli create-rater --name "Fulano"` (imprime o token); `python -m uvicorn app.main:app --factory --port 8000`. Variáveis opcionais: `MRI_DB_PATH`, `MRI_PREPARED_DIR`, `MRI_PAGES_PER_RATER`.
+- Back (dentro de `backend/`): `pip install -r requirements.txt`; `python -m app.cli load-manifest` (carrega `data/prepared/manifest.json` em `data/app.db`); `python -m app.cli create-rater --name "Fulano"` (imprime o token); `python -m uvicorn app.main:app --factory --port 8000`. Variáveis opcionais: `MRI_DB_PATH`, `MRI_PREPARED_DIR`, `MRI_PAGES_PER_RATER`. Exportar as notas em CSV: definir `MRI_ADMIN_PASSWORD` antes de subir o back e abrir `http://localhost:8000/api/admin/export.csv` (usuário qualquer, a senha pedida é essa); sem a variável a rota fica desligada.
 - Testes do back: `python -m pytest backend` (na raiz). `python -m pytest backend scripts` roda os dois.
 
 ## Como trabalhar aqui

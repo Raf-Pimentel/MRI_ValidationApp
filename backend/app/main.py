@@ -1,7 +1,9 @@
+import secrets
 from typing import Annotated, Any
 
 from fastapi import Depends, FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from pydantic import BaseModel, Field
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
@@ -9,6 +11,7 @@ from sqlmodel import Session, select
 from . import service
 from .config import Settings
 from .db import init_db, make_engine
+from .export import export_csv
 from .models import SLOTS, Assignment, Case, Rater, RatingEvent, Volume
 
 MAX_VIEWER_STATE_BYTES = 4096
@@ -136,5 +139,26 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             return reply(existing())
         session.refresh(event)
         return reply(event)
+
+    security = HTTPBasic(auto_error=False)
+
+    @app.get("/api/admin/export.csv")
+    def admin_export(
+        session: Db, credentials: Annotated[HTTPBasicCredentials | None, Depends(security)]
+    ):
+        # Any user name works; only the password counts. Browsers prompt for it.
+        if settings.admin_password is None:
+            raise HTTPException(404, "Exportação desativada.")
+        given = credentials.password if credentials else ""
+        if not secrets.compare_digest(given.encode(), settings.admin_password.encode()):
+            raise HTTPException(
+                401, "Senha de administrador necessária.",
+                headers={"WWW-Authenticate": 'Basic realm="admin"'},
+            )
+        return Response(
+            export_csv(session),
+            media_type="text/csv; charset=utf-8",
+            headers={"Content-Disposition": 'attachment; filename="ratings.csv"'},
+        )
 
     return app
