@@ -5,7 +5,7 @@ Legenda: `[ ]` a fazer, `[~]` em andamento, `[x]` feito. Cada tarefa tem critér
 ## Estado atual
 
 - Última atualização: 2026-10-31
-- Fase em curso: Fases 0 a 5 concluídas (T0.1 a T5.3). **MVP pronto**; próximo: piloto (ver "Depois do MVP")
+- Fase em curso: Fases 0 a 5 concluídas (T0.1 a T5.3). **MVP pronto**; próximo: resolver as pendências P1 a P11 e fazer o piloto
 - Pendências de decisão que bloqueiam: ver `PLANO.md`, seção 4 (escala 1–5, desenho amostral). Nenhuma bloqueia as Fases 0 a 2.
 - Anotações da última sessão: Fase 5. T5.1: `scripts/e2e_check.py` (e `scripts/tests/test_e2e.py`) simula um médico pela API nos 8 casos, exporta o CSV e confere com o gabarito: 8 casos, 40 notas, slots, dataset, sequência e posições de tela batem. T5.2: verificação automática no navegador e no build do front deu tudo OK (volumes de mesmo tamanho, URLs opacas, header NIfTI vazio, sem nome de modelo no HTML/JS); o Rafael conferiu no Chrome (F12): nomes dos volumes opacos e buscas por nomes de modelo em Elements com 0 resultados; assinatura em `docs/checklist-cegamento.md`. Foi criado um médico de teste ("Checagem T5.2") em `data/app.db`, sem notas. T5.3: `docs/nota-tecnica.md` e `docs/hospedagem-e-acesso.md`. Fase 4 (sessão anterior): feita em `backend/app/export.py` e rota `GET /api/admin/export.csv` (HTTP Basic: usuário qualquer, senha em `MRI_ADMIN_PASSWORD`; sem a variável a rota responde 404, senha errada 401). Uma linha por nota (`rating_event`), com `event_id`, `created_at`, `rater_id`, `rater_name`, `case`, `dataset`, `sequence`, `page_position`, `screen_position` (1–5), `slot`, `score`, `comment`, `viewer_state` (JSON em texto). Só slots, nunca origem; correções aparecem como linhas extras (a nota vigente é a última por rater, case e slot). Aberto no pandas em teste. Não há tela de admin: baixar abrindo a URL no navegador (ele pede a senha). Fase 3 (sessão anterior): feita em `frontend/` (`api.ts`, `viewer.ts`, `main.ts`, `index.html`). Link do médico: `/?t=<token>` (a tela de entrada também aceita o link colado). Vite faz proxy de `/api` para `localhost:8000`; o plugin `/dev-data` do spike saiu. Nota 1–5 salva na hora (cada clique ou comentário é um POST com `client_event_id`, em fila, com nova tentativa se cair a conexão); `viewer_state` = cortes (índice 1-based por vista) + brilho/contraste, conferido no banco. Brilho/contraste persistem entre páginas; cortes voltam ao meio. Próxima/Finalizar avisa colunas sem nota; a tela final diz quantas páginas ainda têm imagens sem nota e leva à primeira incompleta. Pré-carga: busca os 5 volumes da página seguinte (cache HTTP do navegador; conferido que a troca lê do cache). Texto das instruções usa a pergunta e as âncoras *propostas* do PLANO seção 4, item 1 (ainda não aprovadas). Pendente: licenças/atribuição dos datasets nas instruções (PLANO seção 4, item 4); desenho amostral (hoje 8 páginas, uma por caso); a lupa não mostra a nota da coluna (PLANO seção 6, item 4); testado no navegador só por JavaScript (o painel não gerou capturas de tela), então falta uma olhada visual de layout, principalmente a faixa de notas em telas pequenas. Ver `.claude/launch.json` para subir back e front.
 
@@ -61,8 +61,27 @@ Objetivo: transformar um lote no formato do testkit em arquivos servíveis, sem 
 - [x] **T5.2** Checagem manual no navegador: nada na aba de rede, no HTML ou no JS revela a origem. CP: lista de conferência assinada.
 - [x] **T5.3** Nota técnica (stack, hospedagem, biblioteca) e documento de hospedagem e acesso em `docs/`. CP: escritos.
 
-**MVP pronto** quando T5.1 a T5.3 estiverem marcadas.
+**MVP pronto**: T5.1 a T5.3 marcadas (2026-10-31). O que falta para o estudo de fato está abaixo.
+
+## Antes do piloto (decisões e ajustes pendentes)
+
+Decisões suas ou do orientador (`PLANO.md`, seção 4):
+
+- [ ] **P1** Aprovar o texto da pergunta e as âncoras da escala 1–5 (hoje são proposta nas instruções).
+- [ ] **P2** Definir o desenho amostral: quantos casos no total, quantos por médico (hoje 8 páginas, uma por caso), se o mesmo paciente pode repetir em outra sequência, mínimo de médicos por caso. Depois ajustar o sorteio (`backend/app/ordering.py`, `MRI_PAGES_PER_RATER`).
+- [ ] **P3** Definir quem gera o lote real e quando (formato do testkit: 5 volumes, `info.txt`, gabarito à parte). Rodar `prepare_data.py` nele e conferir com `scripts/e2e_check.py`.
+- [ ] **P4** Registrar licenças e citações de BraTS-GLI, BraTS-MET e IXI na tela de instruções ou no rodapé.
+- [ ] **P5** Confirmar com o orientador se precisa de TCLE (registramos o estado do viewer).
+- [ ] **P6** Perguntar ao LIDS: Docker, HTTPS ou VPN, disco, banda, backup. Ver `docs/hospedagem-e-acesso.md`.
+
+Ajustes técnicos:
+
+- [ ] **P7** Olhada visual do layout, principalmente a faixa de notas em telas pequenas (Fase 3 foi testada só por JavaScript).
+- [ ] **P8** Testar em Chrome, Firefox e Safari, e com touchpad (rolagem fina) e toque (`docs/decisions/0001-viewer.md`, limitações 4 e 6).
+- [ ] **P9** Decidir se a lupa mostra a nota da coluna (`PLANO.md`, seção 6, item 4).
+- [ ] **P10** Publicar em um servidor com HTTPS (depende de P6) e repetir `docs/checklist-cegamento.md` no endereço final, com `npm run build` em vez do servidor de desenvolvimento.
+- [ ] **P11** Guardar duas cópias do `answer_key.csv` do lote real fora do servidor e do repositório.
 
 ## Depois do MVP (não começar antes)
 
-Piloto com 2–3 pessoas, ranking dos 5 volumes, inglês, treino, atalhos, perfil, admin completo, backup automático, hospedagem no LIDS.
+Piloto com 2–3 pessoas, ranking dos 5 volumes, inglês, treino, atalhos, perfil, admin completo, backup automático, hospedagem no LIDS. Depois do piloto: coleta com ≥ 20 médicos.
