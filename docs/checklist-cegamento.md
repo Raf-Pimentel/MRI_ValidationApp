@@ -19,16 +19,18 @@ Data da checagem automática: 2026-10-31. Ambiente: back e front locais, navegad
 | 9 | Rotas de documentação (`/docs`, `/openapi.json`) desligadas | OK (por construção, `create_app`) |
 | 10 | Gabarito fora do servidor: `answer_key.csv` só é lido por `scripts/e2e_check.py` e pelos testes | OK |
 
-## Falta a olhada humana (o roteiro pede assinatura)
+## Conferência humana (assinada)
 
 Abrir `http://localhost:5173/?t=<token>` no Chrome, com F12:
 
 - [x] Aba **Network**: filtrar por `vol`, conferir que a coluna *Size* é igual nos 5 volumes de cada página.
-- [ ] Aba **Network**: abrir um volume em *Response* e ver que não há texto legível com nome de modelo.
+- [x] Aba **Network**: abrir um volume em *Response* e ver que não há texto legível com nome de modelo.
 - [x] Aba **Elements**: buscar (Ctrl+F) por `resblock`, `mednext`, `segresnet`, `swin`, `real`, `truth`. Só pode haver "real" na pergunta das instruções ("aspecto de imagem real").
-- [ ] Aba **Sources**: buscar o mesmo nos arquivos do site.
-- [ ] Passar o mouse nas colunas e na lupa: nenhum tooltip com origem.
+- [x] Aba **Sources**: buscar o mesmo nos arquivos do site.
+- [x] Passar o mouse nas colunas e na lupa: nenhum tooltip com origem.
 
 Conferido por: Rafael (nomes opacos na aba Network e busca por nomes de modelo em Elements com 0 resultados)  Data: 2026-10-31
 
-Nota: na conferência do Rafael a coluna *Size* mostrou `(disk cache)`; os tamanhos iguais foram medidos pelo script (item 2) e o total carregado (62.205.695 B para 10 volumes) é coerente.
+Confirmado depois, com *Disable cache* ligado: tamanhos iguais (`content-length` 6211744 no volume inspecionado), cabeçalhos sem origem, buscas em Sources com zero resultados e nenhuma dica ao passar o mouse (colunas, botões, lupa).
+
+Nota: na primeira conferência do Rafael a coluna *Size* mostrou `(disk cache)`; os tamanhos iguais foram medidos pelo script (item 2) e o total carregado (62.205.695 B para 10 volumes) é coerente.
