@@ -70,7 +70,7 @@ Decisões suas ou do orientador (`PLANO.md`, seção 4):
 - [x] **P1** Texto e âncoras da escala 1–5: aprovados como estão (2026-10-31, `docs/decisions/0003-decisoes-do-orientador.md`).
 - [ ] **P2** Definir o desenho amostral: quantos casos no total, quantos por médico (hoje 8 páginas, uma por caso), mínimo de médicos por caso. Já decidido: o mesmo paciente pode repetir em outra sequência. Depois ajustar o sorteio (`backend/app/ordering.py`, `MRI_PAGES_PER_RATER`).
 - [ ] **P3** Definir quem gera o lote real e quando (formato do testkit: 5 volumes, `info.txt`, gabarito à parte). Rodar `prepare_data.py` nele e conferir com `scripts/e2e_check.py`.
-- [x] **P4** Licenças e citações dos datasets: dispensadas no MVP local (decisão 0003). Rever antes de divulgar.
+- [x] **P4** Licenças e citações dos datasets: dispensadas no MVP local (decisão 0003). Rever antes de divulgar. Atenção: o `README.md` e `docs/img/` mostram cortes reais do testkit (capturas de tela) no GitHub, por decisão do Rafael (2026-10-31); se a licença não permitir, trocar as imagens por capturas sem MRI.
 - [x] **P5** TCLE: não é necessário.
 - [ ] **P6** Hospedagem (LIDS ou outra): adiada para o próximo passo. Perguntas em `docs/hospedagem-e-acesso.md`.
 
