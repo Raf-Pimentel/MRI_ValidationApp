@@ -21,6 +21,10 @@ Projeto de Iniciação Científica. As notas servem para comparar a fidelidade p
 4. A lupa amplia uma vista, com zoom e arraste, e permite trocar de imagem sem perder o corte.
 5. Cada nota é salva na hora. O médico pode voltar e corrigir, fechar a página e continuar depois pelo mesmo link.
 
+![Os cortes avançam e voltam nas três vistas das cinco colunas ao mesmo tempo](docs/img/rolagem-cortes.gif)
+
+*Rolar o corte muda as cinco imagens juntas, para o médico comparar a mesma região em todas.*
+
 | Entrada | Instruções |
 |---|---|
 | ![Tela de entrada com o campo do código de acesso](docs/img/entrada.png) | ![Tela de instruções com a escala de 1 a 5](docs/img/introducao.png) |
