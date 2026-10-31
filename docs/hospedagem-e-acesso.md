@@ -18,7 +18,7 @@ Estado: a hospedagem no LIDS ainda não foi definida (`PLANO.md`, seção 4, ite
 3. No servidor, dentro de `backend/`:
    - `pip install -r requirements.txt`
    - `python -m app.cli load-manifest`
-   - `python -m uvicorn app.main:app --factory --port 8000` (atrás do proxy reverso)
+   - `python -m uvicorn app.main:create_app --factory --port 8000` (atrás do proxy reverso)
 4. Front: `npm install` e `npm run build` em `frontend/`; servir `frontend/dist/` pelo proxy e encaminhar `/api` para a porta 8000.
 
 Variáveis de ambiente: `MRI_DB_PATH`, `MRI_PREPARED_DIR`, `MRI_PAGES_PER_RATER`, `MRI_ADMIN_PASSWORD`.
