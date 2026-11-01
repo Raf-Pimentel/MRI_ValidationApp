@@ -114,4 +114,4 @@ O foco é o uso em computador. Telefone está fora do escopo.
 
 As imagens nas capturas de tela vêm do conjunto de teste do projeto (`radiologist_grading_testkit/`, 8 casos reais). Os volumes e o gabarito não são versionados. As licenças e citações desses datasets ainda precisam ser revistas antes de qualquer divulgação além do uso local (ver P4 no roadmap).
 
-A licença do código ainda não foi definida.
+O código é distribuído sob a licença MIT (ver [`LICENSE`](LICENSE)). Ela vale só para o código: os datasets usados nos testes têm licenças próprias.
